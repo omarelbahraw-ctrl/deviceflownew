@@ -1,103 +1,64 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// إضافة مستخدم جديد
-export async function createUser(formData: FormData) {
-  const name = formData.get("name") as string;
-  const username = formData.get("username") as string;
-  const password = formData.get("password") as string;
-  const role = formData.get("role") as string;
-  const canManageTraders = formData.get("canManageTraders") === "on";
-  const canManageBatches = formData.get("canManageBatches") === "on";
-  const canManageDiscount = formData.get("canManageDiscount") === "on";
+// Default settings if not present in DB
+export const DEFAULT_SETTINGS = {
+  DEVICE_TYPES: ["شاشات", "ثلاجات", "غسالات", "مكيفات", "برادات مياه", "مبردات هواء", "مكانس", "أفران", "أخرى"],
+  KNOWN_BRANDS: ["سرين", "فريش", "جنرال سرين", "كيولد", "هايكرز", "نيكاي", "كي ام سي", "دانسات", "دبليو بوكس", "سامسونج", "ال جي", "تي سي ال", "أخرى"],
+  FAULT_TYPES: ["يعمل (لا يوجد عطل)", "لا يعمل نهائياً", "مكسور", "خط في الشاشة", "دوت (نقطة)", "عطل بانل", "أخرى"],
+};
 
-  if (!name || !username || !password) {
-    return { error: "جميع الحقول الأساسية مطلوبة" };
-  }
-
-  // Check username uniqueness
-  const existing = await prisma.user.findUnique({ where: { username } });
-  if (existing) {
-    return { error: "اسم المستخدم مستخدم بالفعل" };
-  }
-
+export async function getSystemSettings() {
   try {
-    await prisma.user.create({
-      data: {
-        name,
-        username,
-        password,
-        role: role === "ADMIN" ? "ADMIN" : "EMPLOYEE",
-        canManageTraders,
-        canManageBatches,
-        canManageDiscount,
-      },
+    const settings = await prisma.systemSetting.findMany();
+    
+    // Map them into a useful object
+    const result = {
+      DEVICE_TYPES: [...DEFAULT_SETTINGS.DEVICE_TYPES],
+      KNOWN_BRANDS: [...DEFAULT_SETTINGS.KNOWN_BRANDS],
+      FAULT_TYPES: [...DEFAULT_SETTINGS.FAULT_TYPES],
+    };
+
+    settings.forEach((s) => {
+      try {
+        const parsed = JSON.parse(s.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (s.key === "DEVICE_TYPES") result.DEVICE_TYPES = parsed;
+          if (s.key === "KNOWN_BRANDS") result.KNOWN_BRANDS = parsed;
+          if (s.key === "FAULT_TYPES") result.FAULT_TYPES = parsed;
+        }
+      } catch (e) {
+        console.error("Failed to parse setting", s.key);
+      }
     });
-    revalidatePath("/settings");
-    return { success: true };
+
+    return result;
   } catch (error) {
-    console.error("Error creating user:", error);
-    return { error: "حدث خطأ أثناء إنشاء المستخدم" };
+    console.error("Error fetching settings:", error);
+    // Return defaults if DB error (like schema not updated yet)
+    return DEFAULT_SETTINGS;
   }
 }
 
-// تغيير كلمة المرور
-export async function changePassword(userId: string, newPassword: string) {
-  if (!newPassword || newPassword.length < 4) {
-    return { error: "كلمة المرور يجب أن تكون 4 أحرف على الأقل" };
-  }
-
+export async function updateSystemSetting(key: string, values: string[]) {
   try {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: newPassword },
+    const jsonValue = JSON.stringify(values);
+    
+    await prisma.systemSetting.upsert({
+      where: { key },
+      update: { value: jsonValue },
+      create: { key, value: jsonValue },
     });
-    revalidatePath("/settings");
-    return { success: true };
-  } catch (error) {
-    console.error("Error changing password:", error);
-    return { error: "حدث خطأ أثناء تغيير كلمة المرور" };
-  }
-}
 
-// تحديث صلاحيات مستخدم
-export async function updateUserPermissions(
-  userId: string,
-  permissions: {
-    role: string;
-    canManageTraders: boolean;
-    canManageBatches: boolean;
-    canManageDiscount: boolean;
-  }
-) {
-  try {
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        role: permissions.role === "ADMIN" ? "ADMIN" : "EMPLOYEE",
-        canManageTraders: permissions.canManageTraders,
-        canManageBatches: permissions.canManageBatches,
-        canManageDiscount: permissions.canManageDiscount,
-      },
-    });
     revalidatePath("/settings");
+    revalidatePath("/batches/new");
+    revalidatePath("/discount-warehouse/new");
+    
     return { success: true };
-  } catch (error) {
-    console.error("Error updating permissions:", error);
-    return { error: "حدث خطأ أثناء تحديث الصلاحيات" };
-  }
-}
-
-// حذف مستخدم
-export async function deleteUser(userId: string) {
-  try {
-    await prisma.user.delete({ where: { id: userId } });
-    revalidatePath("/settings");
-    return { success: true };
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    return { error: "حدث خطأ أثناء حذف المستخدم" };
+  } catch (error: any) {
+    console.error("Error updating setting:", error);
+    return { error: "حدث خطأ أثناء حفظ الإعدادات" };
   }
 }

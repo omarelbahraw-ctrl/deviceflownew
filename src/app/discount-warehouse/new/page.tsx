@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,23 +12,19 @@ import {
   Save,
 } from "lucide-react";
 import { createDiscountItem } from "../actions";
-
-const DEVICE_TYPES = ["شاشات", "ثلاجات", "غسالات", "مكيفات", "برادات مياه", "مبردات هواء", "مكانس", "أفران", "أخرى"];
-
-const KNOWN_BRANDS = [
-  "سرين", "فريش", "جنرال سرين", "كيولد", "هايكرز",
-  "نيكاي", "كي ام سي", "دانسات", "دبليو بوكس",
-  "سامسونج", "ال جي", "تي سي ال"
-];
+import { getSystemSettings, DEFAULT_SETTINGS } from "@/app/settings/actions";
 
 export default function NewDiscountItemPage() {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const [deviceTypes, setDeviceTypes] = useState<string[]>(DEFAULT_SETTINGS.DEVICE_TYPES);
+  const [knownBrands, setKnownBrands] = useState<string[]>(DEFAULT_SETTINGS.KNOWN_BRANDS);
+
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
-  const [type, setType] = useState(DEVICE_TYPES[0]);
+  const [type, setType] = useState(DEFAULT_SETTINGS.DEVICE_TYPES[0]);
   const [serialNumber, setSerialNumber] = useState("");
   const [category, setCategory] = useState("B");
   const [workingStatus, setWorkingStatus] = useState("WORKING");
@@ -42,6 +38,17 @@ export default function NewDiscountItemPage() {
 
   const [images, setImages] = useState<(string | null)[]>([null, null, null]);
   const fileRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+
+  useEffect(() => {
+    getSystemSettings().then((settings) => {
+      setDeviceTypes(settings.DEVICE_TYPES);
+      setKnownBrands(settings.KNOWN_BRANDS);
+      if (!type && settings.DEVICE_TYPES.length > 0) {
+        setType(settings.DEVICE_TYPES[0]);
+      }
+    });
+  }, []);
+
 
   const handleImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -134,14 +141,14 @@ export default function NewDiscountItemPage() {
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">النوع</label>
             <select value={type} onChange={(e) => setType(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-3">
-              {DEVICE_TYPES.map((t) => (<option key={t} value={t}>{t}</option>))}
+              {deviceTypes.map((t) => (<option key={t} value={t}>{t}</option>))}
             </select>
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">البراند *</label>
             <input list="knownBrands" type="text" value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-3" placeholder="مثال: سرين" />
             <datalist id="knownBrands">
-              {KNOWN_BRANDS.map((b) => (<option key={b} value={b} />))}
+              {knownBrands.map((b) => (<option key={b} value={b} />))}
             </datalist>
           </div>
           <div>

@@ -197,3 +197,10 @@ model DiscountWarehouse {
 
   device          Device?          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 }
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // JSON encoded array of strings
+  updatedAt DateTime @updatedAt
+}

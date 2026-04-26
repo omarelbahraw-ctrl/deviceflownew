@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -18,26 +18,9 @@ import {
 } from "lucide-react";
 import { createTrader } from "@/app/traders/actions";
 import { createBatchWithDevices, DeviceEntry } from "./actions";
+import { getSystemSettings, DEFAULT_SETTINGS } from "@/app/settings/actions";
 
 type Trader = { id: string; name: string; phone: string | null };
-
-const DEVICE_TYPES = ["شاشات", "ثلاجات", "غسالات", "مكيفات", "برادات مياه", "مبردات هواء", "مكانس", "أفران", "أخرى"];
-
-const KNOWN_BRANDS = [
-  "سرين", "فريش", "جنرال سرين", "كيولد", "هايكرز",
-  "نيكاي", "كي ام سي", "دانسات", "دبليو بوكس",
-  "سامسونج", "ال جي", "تي سي ال"
-];
-
-const FAULT_TYPES = [
-  "يعمل (لا يوجد عطل)",
-  "لا يعمل نهائياً",
-  "مكسور",
-  "خط في الشاشة",
-  "دوت (نقطة)",
-  "عطل بانل",
-  "أخرى",
-];
 
 export default function NewBatchForm({
   traders: initialTraders,
@@ -57,19 +40,39 @@ export default function NewBatchForm({
   const [devices, setDevices] = useState<DeviceEntry[]>([]);
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
 
+  const [deviceTypes, setDeviceTypes] = useState<string[]>(DEFAULT_SETTINGS.DEVICE_TYPES);
+  const [knownBrands, setKnownBrands] = useState<string[]>(DEFAULT_SETTINGS.KNOWN_BRANDS);
+  const [faultTypesList, setFaultTypesList] = useState<string[]>(DEFAULT_SETTINGS.FAULT_TYPES);
+
   // Form fields for adding a new device
-  const [deviceType, setDeviceType] = useState(DEVICE_TYPES[0]);
+  const [deviceType, setDeviceType] = useState(DEFAULT_SETTINGS.DEVICE_TYPES[0]);
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [inspectionResult, setInspectionResult] = useState("MATCH");
-  const [faultType, setFaultType] = useState(FAULT_TYPES[0]);
+  const [faultType, setFaultType] = useState(DEFAULT_SETTINGS.FAULT_TYPES[0]);
   const [accessoriesStatus, setAccessoriesStatus] = useState("كامل ملحقاته والكرتون سليم");
   const [notes, setNotes] = useState("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const serialInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    getSystemSettings().then((settings) => {
+      setDeviceTypes(settings.DEVICE_TYPES);
+      setKnownBrands(settings.KNOWN_BRANDS);
+      setFaultTypesList(settings.FAULT_TYPES);
+      
+      if (!deviceType && settings.DEVICE_TYPES.length > 0) {
+        setDeviceType(settings.DEVICE_TYPES[0]);
+      }
+      if (!faultType && settings.FAULT_TYPES.length > 0) {
+        setFaultType(settings.FAULT_TYPES[0]);
+      }
+    });
+  }, []);
+
 
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -270,7 +273,7 @@ export default function NewBatchForm({
                     onChange={(e) => setDeviceType(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-3"
                   >
-                    {DEVICE_TYPES.map((t) => (
+                    {deviceTypes.map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
@@ -286,7 +289,7 @@ export default function NewBatchForm({
                     placeholder="مثال: Samsung"
                   />
                   <datalist id="brands">
-                    {Array.from(new Set([...KNOWN_BRANDS, ...uniqueBrands])).map((b) => (<option key={b} value={b} />))}
+                    {Array.from(new Set([...knownBrands, ...uniqueBrands])).map((b) => (<option key={b} value={b} />))}
                   </datalist>
                 </div>
                 <div>
@@ -346,7 +349,7 @@ export default function NewBatchForm({
                     onChange={(e) => setFaultType(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-3"
                   >
-                    {FAULT_TYPES.map((f) => (
+                    {faultTypesList.map((f) => (
                       <option key={f} value={f}>{f}</option>
                     ))}
                   </select>

@@ -1,34 +1,19 @@
-import { prisma } from "@/lib/prisma";
-import { Settings } from "lucide-react";
+import { getSystemSettings } from "./actions";
 import SettingsClient from "./SettingsClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function SettingsPage() {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      name: true,
-      username: true,
-      role: true,
-      canManageTraders: true,
-      canManageBatches: true,
-      canManageDiscount: true,
-    },
-  });
+  const settings = await getSystemSettings();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Settings className="h-6 w-6 text-indigo-600" />
-          الإعدادات
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          إدارة المستخدمين وكلمات المرور والصلاحيات
-        </p>
+    <div className="p-4">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">إعدادات النظام</h1>
+        <p className="text-gray-500 mt-1">تعديل القوائم المنسدلة للبراندات وأنواع الأجهزة وغيرها</p>
       </div>
 
-      <SettingsClient users={users} />
+      <SettingsClient initialSettings={settings} />
     </div>
   );
 }
