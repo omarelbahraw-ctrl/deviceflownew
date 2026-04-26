@@ -15,8 +15,8 @@ import clsx from "clsx";
 
 const navigation = [
   { name: "لوحة القيادة", href: "/", icon: LayoutDashboard },
-  { name: "سجل الأذونات", href: "/batches", icon: FileText },
   { name: "استلام جديد", href: "/batches/new", icon: PlusCircle },
+  { name: "سجل الأذونات", href: "/batches", icon: FileText },
   { name: "التجار", href: "/traders", icon: Users },
   { name: "المستودع المخفّض", href: "/discount-warehouse", icon: Tags },
   { name: "الإعدادات", href: "/settings", icon: Settings },
