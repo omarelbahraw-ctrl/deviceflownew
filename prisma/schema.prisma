@@ -120,6 +120,7 @@ model Device {
   inspectorName    String?
   inspectionDate   DateTime?
   notes            String?          // التقرير الفني والملاحظات
+  imageBase64      String?          // صورة حالة الجهاز (Base64)
 
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
