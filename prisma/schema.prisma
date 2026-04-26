@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trader {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  batches   Batch[]
+  devices   Device[]
+}
+
+enum BatchStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+model Batch {
+  id        String      @id @default(cuid())
+  traderId  String
+  date      DateTime    @default(now())
+  status    BatchStatus @default(OPEN)
+  closedAt  DateTime?
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  trader    Trader      @relation(fields: [traderId], references: [id])
+  devices   Device[]
+}
+
+enum Condition {
+  NEW
+  USED
+}
+
+enum CartonStatus {
+  GOOD
+  DAMAGED
+  NONE
+}
+
+enum InspectionResult {
+  PENDING
+  MATCH
+  NOT_MATCH
+}
+
+enum Decision {
+  PENDING
+  ACCEPT
+  RETURN
+  DISCOUNT
+}
+
+model Device {
+  id               String           @id @default(cuid())
+  batchId          String
+  traderId         String
+  type             String
+  model            String
+  serialNumber     String           @unique
+  condition        Condition
+  cartonStatus     CartonStatus
+  inspectionResult InspectionResult @default(PENDING)
+  defectType       String?
+  decision         Decision         @default(PENDING)
+  inspectorName    String?
+  inspectionDate   DateTime?
+  notes            String?
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  batch            Batch            @relation(fields: [batchId], references: [id])
+  trader           Trader           @relation(fields: [traderId], references: [id])
+  images           DeviceImage[]
+  discountItem     DiscountWarehouse?
+}
+
+enum ImageType {
+  FRONT
+  BACK
+  SERIAL
+  DEFECT
+  CARTON
+}
+
+model DeviceImage {
+  id         String    @id @default(cuid())
+  deviceId   String
+  imagePath  String
+  imageType  ImageType
+
+  createdAt  DateTime  @default(now())
+
+  device     Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+}
+
+enum DiscountCategory {
+  A
+  B
+  C
+}
+
+enum WorkingStatus {
+  WORKING
+  MINOR_ISSUE
+  NEEDS_REPAIR
+}
+
+model DiscountWarehouse {
+  id              String           @id @default(cuid())
+  deviceId        String           @unique
+  category        DiscountCategory
+  workingStatus   WorkingStatus
+  displayNotes    String?
+  priceBefore     Float
+  discountPercent Float
+  priceAfter      Float
+  readyForSale    Boolean          @default(false)
+  repairCost      Float?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  device          Device           @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+}
