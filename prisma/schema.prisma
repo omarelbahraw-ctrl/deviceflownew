@@ -4,18 +4,43 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  username  String   @unique
+  password  String   // Hashed password
+  role      Role     @default(EMPLOYEE)
+  
+  // Specific permissions (JSON or simple booleans)
+  canManageTraders Boolean @default(false)
+  canManageBatches Boolean @default(true)  // Receiving & Inspection
+  canManageDiscount Boolean @default(false) // Discount Warehouse
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Trader {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String
-  email     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  name               String   // اسم المؤسسة
+  phone              String   // هاتف المؤسسة
+  contactPerson      String?  // اسم المسئول
+  representative     String?  // المندوب التابع له
+  email              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  batches   Batch[]
-  devices   Device[]
+  batches            Batch[]
+  devices            Device[]
 }
 
 enum BatchStatus {
@@ -35,7 +60,22 @@ model Batch {
   updatedAt DateTime    @updatedAt
 
   trader    Trader      @relation(fields: [traderId], references: [id])
-  devices   Device[]
+  items     BatchItem[] // الأصناف المتوقع استلامها في هذا الإذن
+  devices   Device[]    // الأجهزة الفعلية التي تم استلامها
+}
+
+model BatchItem {
+  id               String   @id @default(cuid())
+  batchId          String
+  brand            String   // البراند
+  deviceType       String   // نوع الجهاز (شاشات، مكيفات، الخ)
+  model            String   // الموديل
+  expectedQuantity Int      // العدد المتوقع
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  batch            Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
 }
 
 enum Condition {
@@ -66,17 +106,20 @@ model Device {
   id               String           @id @default(cuid())
   batchId          String
   traderId         String
-  type             String
-  model            String
+  brand            String           @default("غير محدد") // البراند
+  type             String           // نوع الجهاز
+  model            String           // الموديل
   serialNumber     String           @unique
   condition        Condition
   cartonStatus     CartonStatus
+  accessoriesStatus String?         // الملحقات (كامل ملحقاته، غير كامل ملحقاته)
   inspectionResult InspectionResult @default(PENDING)
-  defectType       String?
+  faultType        String?          // خانة العطل (يعمل، لا يعمل، مكسور، خط، دوت، بانل)
+  defectType       String?          // تفاصيل إضافية للعيب
   decision         Decision         @default(PENDING)
   inspectorName    String?
   inspectionDate   DateTime?
-  notes            String?
+  notes            String?          // التقرير الفني والملاحظات
 
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
