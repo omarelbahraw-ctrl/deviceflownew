@@ -1,0 +1,33 @@
+Retrieving project…
+Deploying c4p52k6sgh-4415s-projects/device-flow
+Uploading [--------------------] (0.0B/70B)
+Uploading [====================] (70.0B/70B)
+Inspect: https://vercel.com/c4p52k6sgh-4415s-projects/device-flow/DmszgpD32MseBD4Jfurw9fVrevWE [3s]
+Production: https://device-flow-kqt7cplv4-c4p52k6sgh-4415s-projects.vercel.app [3s]
+https://device-flow-kqt7cplv4-c4p52k6sgh-4415s-projects.vercel.appBuilding...
+Building: Running build in Washington, D.C., USA (East) – iad1
+Building: Build machine configuration: 2 cores, 8 GB
+Building: Retrieving list of deployment files...
+Building: Previous build caches not available.
+Building: Previous build caches not available.
+Building: Downloading 42 deployment files...
+Building: Running "vercel build"
+Building: Vercel CLI 51.6.1
+Building: Installing dependencies...
+Building: added 406 packages in 20s
+Building: 152 packages are looking for funding
+Building: run `npm fund` for details
+Building: Running "npm run build"
+Building: > device-flow@0.1.0 build
+Building: > next build
+Building: Attention: Next.js now collects completely anonymous telemetry regarding usage.
+Building: This information is used to shape Next.js' roadmap and prioritize features.
+Building: You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+Building: https://nextjs.org/telemetry
+Building: ▲ Next.js 16.2.4 (Turbopack)
+Building: - Environments: .env
+Building: ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+Building: Creating an optimized production build ...
+Building: ✓ Compiled successfully in 6.9s
+Building: Running TypeScript ...
+Error: Command "npm run build" exited with 1

@@ -86,7 +86,10 @@ export default async function BatchDetailsPage({
               </h2>
             </div>
             
-            <form action={receiveDevice} className="p-5 space-y-4">
+            <form action={async (formData) => {
+              "use server";
+              await receiveDevice(formData);
+            }} className="p-5 space-y-4">
               <input type="hidden" name="batchId" value={batch.id} />
               <input type="hidden" name="traderId" value={batch.trader.id} />
               <input type="hidden" name="batchItemId" value="DIRECT" /> {/* Bypassing expected items */}

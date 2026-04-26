@@ -34,7 +34,10 @@ export default async function TradersPage() {
               إضافة تاجر جديد
             </h2>
           </div>
-          <form action={createTrader} className="p-4 space-y-4">
+          <form action={async (formData) => {
+            "use server";
+            await createTrader(formData);
+          }} className="p-4 space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">اسم التاجر أو الشركة *</label>
               <input

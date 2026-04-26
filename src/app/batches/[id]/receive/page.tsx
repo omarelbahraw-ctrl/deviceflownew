@@ -72,7 +72,10 @@ export default async function ReceiveDevicePage({
               فحص جهاز جديد
             </h2>
           </div>
-          <form action={receiveDevice} className="p-6">
+          <form action={async (formData) => {
+            "use server";
+            await receiveDevice(formData);
+          }} className="p-6">
             <input type="hidden" name="batchId" value={batch.id} />
             <input type="hidden" name="traderId" value={batch.trader.id} />
             
