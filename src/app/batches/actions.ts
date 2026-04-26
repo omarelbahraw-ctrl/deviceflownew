@@ -27,17 +27,23 @@ export async function createBatch(formData: FormData) {
   }
 }
 
-// 2. حذف إذن
+// 2. حذف إذن (مع جميع الأجهزة المرتبطة)
 export async function deleteBatch(id: string) {
   try {
-    await prisma.batch.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      // حذف الأجهزة المرتبطة أولاً
+      await tx.device.deleteMany({ where: { batchId: id } });
+      // حذف بنود الإذن المتوقعة
+      await tx.batchItem.deleteMany({ where: { batchId: id } });
+      // حذف الإذن نفسه
+      await tx.batch.delete({ where: { id } });
     });
     revalidatePath("/batches");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.error("Error deleting batch:", error);
-    return { error: "لا يمكن حذف هذا الإذن لوجود أجهزة مسجلة به" };
+    return { error: "حدث خطأ أثناء حذف الإذن" };
   }
 }
 
