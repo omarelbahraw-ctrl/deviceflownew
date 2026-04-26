@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // Currently checking the dummy cookie set by the login API
   const session = request.cookies.get('deviceflow_session')?.value;
   const { pathname } = request.nextUrl;
