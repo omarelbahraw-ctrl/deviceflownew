@@ -164,18 +164,36 @@ enum WorkingStatus {
 
 model DiscountWarehouse {
   id              String           @id @default(cuid())
-  deviceId        String           @unique
+  deviceId        String?          @unique
   category        DiscountCategory
   workingStatus   WorkingStatus
+
+  // بيانات الجهاز (مستقل عن Device)
+  brand           String?
+  model           String?
+  type            String?
+  serialNumber    String?
+  
+  // تفاصيل الإصلاح
+  previousIssue   String?          // المشكلة السابقة
+  repairDone      String?          // ما تم إصلاحه
+  accessories     String?          // الملحقات المتاحة
   displayNotes    String?
-  priceBefore     Float
-  discountPercent Float
-  priceAfter      Float
-  readyForSale    Boolean          @default(false)
+  
+  // الأسعار
+  priceBefore     Float?
+  discountPercent Float?
+  priceAfter      Float?
   repairCost      Float?
+  readyForSale    Boolean          @default(true)
+
+  // صور الجهاز (base64)
+  image1          String?          // صورة الجهاز الرئيسية
+  image2          String?          // صورة إضافية
+  image3          String?          // صورة الملحقات
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  device          Device           @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  device          Device?          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 }
