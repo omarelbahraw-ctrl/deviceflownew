@@ -136,7 +136,7 @@ export default function NewBatchForm({
     setImageBase64(null);
     setImagePreview(null);
     setInspectionResult("MATCH");
-    setFaultType(FAULT_TYPES[0]);
+    setFaultType(faultTypesList[0] || "");
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     // Focus serial number for quick next entry
