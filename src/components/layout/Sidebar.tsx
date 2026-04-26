@@ -6,7 +6,8 @@ import {
   LayoutDashboard, 
   Users, 
   Package, 
-  Search, 
+  FileText,
+  PlusCircle,
   Tags,
   Settings
 } from "lucide-react";
@@ -14,7 +15,8 @@ import clsx from "clsx";
 
 const navigation = [
   { name: "لوحة القيادة", href: "/", icon: LayoutDashboard },
-  { name: "فحص واستلام الأجهزة", href: "/batches", icon: Package },
+  { name: "سجل الأذونات", href: "/batches", icon: FileText },
+  { name: "استلام جديد", href: "/batches/new", icon: PlusCircle },
   { name: "التجار", href: "/traders", icon: Users },
   { name: "المستودع المخفّض", href: "/discount-warehouse", icon: Tags },
   { name: "الإعدادات", href: "/settings", icon: Settings },
@@ -32,7 +34,11 @@ export function Sidebar() {
       <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
         <nav className="mt-2 flex-1 space-y-1 px-3">
           {navigation.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
+            const isActive = item.href === "/"
+              ? pathname === "/"
+              : item.href === "/batches"
+              ? pathname === "/batches"
+              : pathname === item.href || (pathname?.startsWith(item.href + "/") ?? false);
             return (
               <Link
                 key={item.name}

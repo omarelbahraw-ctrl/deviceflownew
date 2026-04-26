@@ -1,10 +1,21 @@
 import { prisma } from "@/lib/prisma";
-import { Package, Plus, Calendar, Trash2, ChevronLeft, CheckCircle, Clock } from "lucide-react";
+import {
+  Package,
+  Plus,
+  Calendar,
+  Trash2,
+  Eye,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  FileText,
+  Hash,
+  User,
+} from "lucide-react";
 import Link from "next/link";
-import { createBatch, deleteBatch } from "./actions";
+import { deleteBatch } from "./actions";
 
 export default async function BatchesPage() {
-  // Fetch batches with trader names and device counts
   const batches = await prisma.batch.findMany({
     orderBy: { createdAt: "desc" },
     include: {
@@ -13,117 +24,217 @@ export default async function BatchesPage() {
     },
   });
 
-  // Fetch traders to populate the dropdown for creating a new batch
-  const traders = await prisma.trader.findMany({
-    orderBy: { name: "asc" },
-    select: { id: true, name: true },
-  });
+  // Stats
+  const totalBatches = batches.length;
+  const openBatches = batches.filter((b) => b.status === "OPEN" || b.status === "IN_PROGRESS").length;
+  const closedBatches = batches.filter((b) => b.status === "CLOSED").length;
+  const totalDevices = batches.reduce((sum, b) => sum + b._count.devices, 0);
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Package className="h-6 w-6 text-indigo-600" />
-          أذونات الاستلام
-        </h1>
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <FileText className="h-6 w-6 text-indigo-600" />
+            سجل الأذونات
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            جميع أذونات الاستلام والفحص المسجلة في النظام
+          </p>
+        </div>
+        <Link
+          href="/batches/new"
+          className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg"
+        >
+          <Plus className="h-5 w-5" /> إذن استلام جديد
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* أزرار العمليات */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-fit p-6 flex flex-col items-center text-center space-y-4">
-           <div className="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
-             <Plus className="h-8 w-8" />
-           </div>
-           <h2 className="text-xl font-bold text-gray-800">إضافة أجهزة جديدة</h2>
-           <p className="text-sm text-gray-500">قم بتحديد العميل ومسح الأجهزة مباشرة في خطوة واحدة سريعة.</p>
-           
-           <Link 
-             href="/batches/new" 
-             className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors mt-2"
-           >
-             <Plus className="h-5 w-5" /> بدء الاستلام والفحص الآن
-           </Link>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">إجمالي الأذونات</p>
+              <p className="text-xl font-bold text-gray-900">{totalBatches}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">أذونات مفتوحة</p>
+              <p className="text-xl font-bold text-amber-600">{openBatches}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">أذونات مكتملة</p>
+              <p className="text-xl font-bold text-green-600">{closedBatches}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <Package className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">إجمالي الأجهزة</p>
+              <p className="text-xl font-bold text-blue-600">{totalDevices}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Batches Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-slate-50 border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <Hash className="h-5 w-5 text-gray-400" />
+            قائمة الأذونات
+          </h2>
+          <span className="text-sm text-gray-500">{totalBatches} إذن</span>
         </div>
 
-        {/* قائمة الأذونات */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="bg-slate-50 border-b border-gray-100 p-4">
-            <h2 className="text-lg font-semibold text-gray-800">قائمة أذونات الاستلام</h2>
-          </div>
-          {batches.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              لا يوجد أذونات استلام حالياً. قم بفتح إذن جديد للبدء.
+        {batches.length === 0 ? (
+          <div className="p-16 text-center">
+            <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <FileText className="h-8 w-8 text-gray-400" />
             </div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {batches.map((batch) => (
-                <li key={batch.id} className="p-4 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Link href={`/batches/${batch.id}`} className="text-md font-bold text-indigo-700 hover:underline">
-                        إذن رقم: {batch.id.substring(batch.id.length - 6).toUpperCase()}
+            <h3 className="text-lg font-bold text-gray-700 mb-2">لا توجد أذونات بعد</h3>
+            <p className="text-sm text-gray-500 mb-6">قم بفتح أول إذن استلام لبدء تسجيل الأجهزة.</p>
+            <Link
+              href="/batches/new"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-colors"
+            >
+              <Plus className="h-5 w-5" /> فتح إذن جديد
+            </Link>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-right">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">رقم الإذن</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">العميل / التاجر</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">التاريخ والوقت</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">عدد الأجهزة</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">الحالة</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {batches.map((batch) => (
+                  <tr key={batch.id} className="hover:bg-indigo-50/30 transition-colors">
+                    {/* رقم الإذن */}
+                    <td className="px-6 py-4">
+                      <Link
+                        href={`/batches/${batch.id}`}
+                        className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
+                      >
+                        <FileText className="h-4 w-4" />
+                        {batch.id.substring(batch.id.length - 6).toUpperCase()}
                       </Link>
-                      <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <span className="font-semibold text-gray-700">{batch.trader.name}</span>
+                    </td>
+
+                    {/* العميل */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                          <User className="h-4 w-4 text-gray-500" />
                         </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                          <span>{new Date(batch.date).toLocaleDateString('ar-SA')}</span>
+                        <span className="text-sm font-bold text-gray-800">{batch.trader.name}</span>
+                      </div>
+                    </td>
+
+                    {/* التاريخ */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <div>
+                          <span className="block font-medium">{new Date(batch.date).toLocaleDateString("ar-SA")}</span>
+                          <span className="block text-xs text-gray-400">
+                            {new Date(batch.createdAt).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    </td>
 
-                    <div className="flex items-center gap-4">
-                      {/* الحالة */}
-                      <span className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium ${
-                        batch.status === "CLOSED" ? "bg-green-100 text-green-800" :
-                        batch.status === "IN_PROGRESS" ? "bg-amber-100 text-amber-800" :
-                        "bg-blue-100 text-blue-800"
-                      }`}>
-                        {batch.status === "CLOSED" ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                        {batch.status === "CLOSED" ? "مكتمل" : batch.status === "IN_PROGRESS" ? "قيد الفحص" : "جديد"}
+                    {/* عدد الأجهزة */}
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center justify-center h-9 min-w-[2.5rem] px-2 bg-blue-50 text-blue-700 font-bold text-sm rounded-lg border border-blue-100">
+                        {batch._count.devices}
                       </span>
+                    </td>
 
-                      <div className="text-center hidden md:block bg-gray-50 px-3 py-1 rounded border border-gray-100">
-                        <span className="block text-xs text-gray-500">أصناف متوقعة</span>
-                        <span className="block text-sm font-bold text-gray-800">{batch._count.items}</span>
-                      </div>
-                      
-                      <div className="text-center hidden md:block bg-indigo-50 px-3 py-1 rounded border border-indigo-100">
-                        <span className="block text-xs text-indigo-500">استلام فعلي</span>
-                        <span className="block text-sm font-bold text-indigo-700">{batch._count.devices}</span>
-                      </div>
-                      
-                      <div className="flex items-center border-r border-gray-200 pr-4 mr-2">
-                        <Link 
+                    {/* الحالة */}
+                    <td className="px-6 py-4 text-center">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                          batch.status === "CLOSED"
+                            ? "bg-green-100 text-green-700 border border-green-200"
+                            : batch.status === "IN_PROGRESS"
+                            ? "bg-amber-100 text-amber-700 border border-amber-200"
+                            : "bg-blue-100 text-blue-700 border border-blue-200"
+                        }`}
+                      >
+                        {batch.status === "CLOSED" ? (
+                          <><CheckCircle className="h-3.5 w-3.5" /> مكتمل</>
+                        ) : batch.status === "IN_PROGRESS" ? (
+                          <><Clock className="h-3.5 w-3.5" /> قيد الفحص</>
+                        ) : (
+                          <><AlertCircle className="h-3.5 w-3.5" /> جديد</>
+                        )}
+                      </span>
+                    </td>
+
+                    {/* الإجراءات */}
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Link
                           href={`/batches/${batch.id}`}
-                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="عرض تفاصيل الإذن"
+                          className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                          title="عرض التفاصيل"
                         >
-                          <ChevronLeft className="h-5 w-5" />
+                          <Eye className="h-4 w-4" />
+                          <span className="hidden sm:inline">تفاصيل</span>
                         </Link>
-                        <form action={async () => {
-                          "use server";
-                          await deleteBatch(batch.id);
-                        }}>
-                          <button 
-                            type="submit" 
-                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        <form
+                          action={async () => {
+                            "use server";
+                            await deleteBatch(batch.id);
+                          }}
+                        >
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
                             title="حذف الإذن"
                           >
-                            <Trash2 className="h-5 w-5" />
+                            <Trash2 className="h-4 w-4" />
+                            <span className="hidden sm:inline">حذف</span>
                           </button>
                         </form>
                       </div>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
