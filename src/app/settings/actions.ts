@@ -2,13 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-
-// Default settings if not present in DB
-export const DEFAULT_SETTINGS = {
-  DEVICE_TYPES: ["شاشات", "ثلاجات", "غسالات", "مكيفات", "برادات مياه", "مبردات هواء", "مكانس", "أفران", "أخرى"],
-  KNOWN_BRANDS: ["سرين", "فريش", "جنرال سرين", "كيولد", "هايكرز", "نيكاي", "كي ام سي", "دانسات", "دبليو بوكس", "سامسونج", "ال جي", "تي سي ال", "أخرى"],
-  FAULT_TYPES: ["يعمل (لا يوجد عطل)", "لا يعمل نهائياً", "مكسور", "خط في الشاشة", "دوت (نقطة)", "عطل بانل", "أخرى"],
-};
+import { DEFAULT_SETTINGS } from "./constants";
 
 export async function getSystemSettings() {
   try {

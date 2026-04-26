@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { createTrader } from "@/app/traders/actions";
 import { createBatchWithDevices, DeviceEntry } from "./actions";
-import { getSystemSettings, DEFAULT_SETTINGS } from "@/app/settings/actions";
+import { getSystemSettings } from "@/app/settings/actions";
+import { DEFAULT_SETTINGS } from "@/app/settings/constants";
 
 type Trader = { id: string; name: string; phone: string | null };
 

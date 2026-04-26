@@ -12,7 +12,8 @@ import {
   Save,
 } from "lucide-react";
 import { createDiscountItem } from "../actions";
-import { getSystemSettings, DEFAULT_SETTINGS } from "@/app/settings/actions";
+import { getSystemSettings } from "@/app/settings/actions";
+import { DEFAULT_SETTINGS } from "@/app/settings/constants";
 
 export default function NewDiscountItemPage() {
   const router = useRouter();
