@@ -1,0 +1,19 @@
+Retrieving project…
+Deploying c4p52k6sgh-4415s-projects/deviceflow
+Uploading [--------------------] (0.0B/69B)
+Uploading [====================] (69.0B/69B)
+Inspect: https://vercel.com/c4p52k6sgh-4415s-projects/deviceflow/7Hm665isvb3or1qYWzsWMHN5ArY3 [4s]
+Production: https://deviceflow-d9kq6tjv5-c4p52k6sgh-4415s-projects.vercel.app [4s]
+Building...
+{
+  "status": "error",
+  "reason": "deploy_failed",
+  "message": "Deployment not found",
+  "next": [
+    {
+      "command": "vercel deploy",
+      "when": "retry deploy"
+    }
+  ]
+}
+Error: Deployment not found

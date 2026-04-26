@@ -21,7 +21,14 @@ import { createBatchWithDevices, DeviceEntry } from "./actions";
 
 type Trader = { id: string; name: string; phone: string | null };
 
-const DEVICE_TYPES = ["شاشات", "مكيفات", "برادات", "غسالات", "أجهزة ذكية", "أخرى"];
+const DEVICE_TYPES = ["شاشات", "ثلاجات", "غسالات", "مكيفات", "برادات مياه", "مبردات هواء", "مكانس", "أفران", "أخرى"];
+
+const KNOWN_BRANDS = [
+  "سرين", "فريش", "جنرال سرين", "كيولد", "هايكرز",
+  "نيكاي", "كي ام سي", "دانسات", "دبليو بوكس",
+  "سامسونج", "ال جي", "تي سي ال"
+];
+
 const FAULT_TYPES = [
   "يعمل (لا يوجد عطل)",
   "لا يعمل نهائياً",
@@ -279,7 +286,7 @@ export default function NewBatchForm({
                     placeholder="مثال: Samsung"
                   />
                   <datalist id="brands">
-                    {uniqueBrands.map((b) => (<option key={b} value={b} />))}
+                    {Array.from(new Set([...KNOWN_BRANDS, ...uniqueBrands])).map((b) => (<option key={b} value={b} />))}
                   </datalist>
                 </div>
                 <div>

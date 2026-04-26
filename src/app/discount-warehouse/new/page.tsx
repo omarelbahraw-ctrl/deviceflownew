@@ -13,7 +13,13 @@ import {
 } from "lucide-react";
 import { createDiscountItem } from "../actions";
 
-const DEVICE_TYPES = ["شاشات", "مكيفات", "برادات", "غسالات", "أجهزة ذكية", "أخرى"];
+const DEVICE_TYPES = ["شاشات", "ثلاجات", "غسالات", "مكيفات", "برادات مياه", "مبردات هواء", "مكانس", "أفران", "أخرى"];
+
+const KNOWN_BRANDS = [
+  "سرين", "فريش", "جنرال سرين", "كيولد", "هايكرز",
+  "نيكاي", "كي ام سي", "دانسات", "دبليو بوكس",
+  "سامسونج", "ال جي", "تي سي ال"
+];
 
 export default function NewDiscountItemPage() {
   const router = useRouter();
@@ -133,7 +139,10 @@ export default function NewDiscountItemPage() {
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">البراند *</label>
-            <input type="text" value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-3" placeholder="Samsung" />
+            <input list="knownBrands" type="text" value={brand} onChange={(e) => setBrand(e.target.value)} className="w-full rounded-lg border border-gray-300 px-3 py-3" placeholder="مثال: سرين" />
+            <datalist id="knownBrands">
+              {KNOWN_BRANDS.map((b) => (<option key={b} value={b} />))}
+            </datalist>
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">الموديل</label>
