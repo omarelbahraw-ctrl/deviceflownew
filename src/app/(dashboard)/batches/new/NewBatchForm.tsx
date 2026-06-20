@@ -70,8 +70,26 @@ export default function NewBatchForm({
             false
           );
           scannerRef.current.render(
-            (decodedText: string) => {
-              setSerialNumber(decodedText);
+            (decodedText: any) => {
+              // Safely extract text in case the library passes an event or object
+              let finalStr = "";
+              if (typeof decodedText === "string") {
+                finalStr = decodedText;
+              } else if (decodedText && typeof decodedText === "object") {
+                if (decodedText.target && decodedText.target.value) {
+                  finalStr = decodedText.target.value;
+                } else {
+                  finalStr = decodedText.text || decodedText.data || JSON.stringify(decodedText);
+                }
+              } else {
+                finalStr = String(decodedText);
+              }
+              
+              if (finalStr === "[object Event]") {
+                return; // Ignore bogus event objects
+              }
+
+              setSerialNumber(finalStr);
               if (scannerRef.current) {
                 scannerRef.current.clear().catch(() => {});
                 scannerRef.current = null;
