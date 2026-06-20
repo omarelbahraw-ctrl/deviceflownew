@@ -10,10 +10,10 @@ export function Header() {
   const { isSidebarOpen, setIsSidebarOpen } = useLayoutState();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+    <header className="flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 relative z-20">
       <button 
         type="button" 
-        className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+        className="-m-2.5 p-2.5 text-gray-700 lg:hidden cursor-pointer active:bg-gray-100 rounded-md"
         onClick={() => setIsSidebarOpen(true)}
       >
         <span className="sr-only">Open Menu</span>
