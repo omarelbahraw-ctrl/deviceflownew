@@ -3,13 +3,19 @@
 import { Menu } from "lucide-react";
 
 import { useTranslation } from "@/components/layout/LanguageContext";
+import { useLayoutState } from "./LayoutContext";
 
 export function Header() {
   const { t } = useTranslation();
+  const { isSidebarOpen, setIsSidebarOpen } = useLayoutState();
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-      <button type="button" className="-m-2.5 p-2.5 text-gray-700 lg:hidden">
+      <button 
+        type="button" 
+        className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+        onClick={() => setIsSidebarOpen(true)}
+      >
         <span className="sr-only">Open Menu</span>
         <Menu className="h-6 w-6" aria-hidden="true" />
       </button>
