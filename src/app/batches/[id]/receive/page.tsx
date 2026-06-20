@@ -220,7 +220,7 @@ export default async function ReceiveDevicePage({
 
             <div className="mt-8 pt-5 border-t border-gray-100 flex items-center justify-between">
               <div className="text-sm text-gray-500">
-                <AlertTriangle className={clsx("h-4 w-4 inline text-amber-500", isRtl ? "ml-1" : "mr-1")} />
+                <AlertTriangle className={`h-4 w-4 inline text-amber-500 ${isRtl ? "ml-1" : "mr-1"}`} />
                 {isRtl ? "تأكد من قراءة السيريال بشكل صحيح." : "Make sure the serial is read correctly."}
               </div>
               <button

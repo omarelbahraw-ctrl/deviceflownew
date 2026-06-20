@@ -268,19 +268,4 @@ export default async function BatchesPage() {
       </div>
     </div>
   );
-}-4" />
-                            <span className="hidden sm:inline">حذف</span>
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
