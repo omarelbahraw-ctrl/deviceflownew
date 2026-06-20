@@ -28,9 +28,26 @@ const navigation = [
   { nameKey: "nav_settings" as const, href: "/settings", icon: Settings },
 ];
 
+import { useState, useEffect } from "react";
+
 export function Sidebar() {
   const pathname = usePathname();
   const { locale, setLocale, t, isRtl } = useTranslation();
+  const [role, setRole] = useState("ADMIN");
+  const [userName, setUserName] = useState("admin@capitalofglory.com");
+
+  useEffect(() => {
+    try {
+      const match = document.cookie.match(new RegExp('(^| )deviceflow_session=([^;]+)'));
+      if (match) {
+        const session = JSON.parse(decodeURIComponent(match[2]));
+        setRole(session.role || "ADMIN");
+        setUserName(session.name || "User");
+      }
+    } catch (e) {
+      console.error("Error parsing session cookie", e);
+    }
+  }, []);
 
   return (
     <div className="flex h-full w-64 flex-col bg-slate-900 text-white shadow-xl">
@@ -49,6 +66,11 @@ export function Sidebar() {
       <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
         <nav className="mt-2 flex-1 space-y-1 px-3">
           {navigation.map((item) => {
+            const adminOnlyLinks = ["/reports", "/reports/traders", "/users", "/settings"];
+            if (role === "TECHNICIAN" && adminOnlyLinks.some(link => item.href === link || item.href.startsWith(link + "/"))) {
+              return null;
+            }
+
             const isActive = item.href === "/"
               ? pathname === "/"
               : item.href === "/batches"
@@ -83,7 +105,7 @@ export function Sidebar() {
         <div className="flex items-center">
           <div>
             <p className="text-sm font-medium text-white">{t("brand_name")}</p>
-            <p className="text-xs font-medium text-slate-400">admin@capitalofglory.com</p>
+            <p className="text-xs font-medium text-slate-400">{userName}</p>
           </div>
         </div>
       </div>
