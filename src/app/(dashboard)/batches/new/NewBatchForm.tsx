@@ -18,10 +18,10 @@ import {
   Loader2,
   Scan,
 } from "lucide-react";
-import { createTrader } from "@/app/traders/actions";
+import { createTrader } from "@/app/(dashboard)/traders/actions";
 import { createBatchWithDevices, DeviceEntry } from "./actions";
-import { getSystemSettings } from "@/app/settings/actions";
-import { DEFAULT_SETTINGS } from "@/app/settings/constants";
+import { getSystemSettings } from "@/app/(dashboard)/settings/actions";
+import { DEFAULT_SETTINGS } from "@/app/(dashboard)/settings/constants";
 import { useTranslation } from "@/components/layout/LanguageContext";
 import clsx from "clsx";
 

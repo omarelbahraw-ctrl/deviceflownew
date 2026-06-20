@@ -24,6 +24,7 @@ const navigation = [
   { nameKey: "nav_reports_traders" as const, href: "/reports/traders", icon: FileText },
   { nameKey: "nav_spare_parts" as const, href: "/spare-parts", icon: Cpu },
   { nameKey: "nav_discount_warehouse" as const, href: "/discount-warehouse", icon: Tags },
+  { nameKey: "nav_users" as const, href: "/users", icon: Users },
   { nameKey: "nav_settings" as const, href: "/settings", icon: Settings },
 ];
 
