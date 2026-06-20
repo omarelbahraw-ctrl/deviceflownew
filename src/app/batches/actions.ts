@@ -110,3 +110,57 @@ export async function closeBatch(batchId: string) {
     return { error: "حدث خطأ أثناء حفظ وإغلاق الإذن" };
   }
 }
+
+// 6. تحديث قرار أو حالة الجهاز الفنية
+export async function updateDeviceDecision(deviceId: string, decision: any, batchId: string) {
+  try {
+    const updatedDevice = await prisma.device.update({
+      where: { id: deviceId },
+      data: { decision },
+    });
+
+    // Check if the decision is one of the discount warehouse triggers
+    const triggerDiscount = 
+      decision === "ACCEPT" ||
+      decision === "RETURNED_COMPLIANT" || 
+      decision === "NON_COMPLIANT_RECEIVED_WITH_OVERRIDE";
+
+    if (triggerDiscount) {
+      // Check if already exists in DiscountWarehouse
+      const existingDiscount = await prisma.discountWarehouse.findUnique({
+        where: { deviceId }
+      });
+
+      if (!existingDiscount) {
+        // Create a new record in DiscountWarehouse copying fields from the device
+        await prisma.discountWarehouse.create({
+          data: {
+            deviceId,
+            brand: updatedDevice.brand,
+            model: updatedDevice.model,
+            type: updatedDevice.type,
+            serialNumber: updatedDevice.serialNumber,
+            category: updatedDevice.discountCategory, // Sync category
+            workingStatus: "WORKING", // Default status WORKING
+            previousIssue: updatedDevice.notes || updatedDevice.defectType || "تحويل تلقائي من فحص أجهزة المرتجعات",
+            readyForSale: true,
+          }
+        });
+      }
+    } else {
+      // If decision changed to something else, remove from discount warehouse
+      await prisma.discountWarehouse.deleteMany({
+        where: { deviceId }
+      });
+    }
+    
+    revalidatePath(`/batches/${batchId}`);
+    revalidatePath(`/batches/${batchId}/receive`);
+    revalidatePath('/discount-warehouse');
+    revalidatePath('/'); // Refresh dashboard
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating device decision:", error);
+    return { error: "حدث خطأ أثناء تحديث حالة الجهاز وتزامن المستودع" };
+  }
+}

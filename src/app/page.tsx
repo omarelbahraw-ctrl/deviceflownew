@@ -4,43 +4,76 @@ import {
   CheckCircle, 
   AlertTriangle, 
   Tags,
-  TrendingUp,
   Clock
 } from "lucide-react";
 import Link from "next/link";
+import { Metadata } from "next";
+import { cookies } from "next/headers";
+import { translations, Locale } from "@/lib/translations";
+
+export const metadata: Metadata = {
+  title: "عاصمة المجد - نظام إدارة الأجهزة والمستودع",
+  description: "نظام لإدارة استلام وفحص الأجهزة والمستودع المخفّض",
+};
 
 export default async function Dashboard() {
-  // Fetch real statistics from database
-  const totalDevices = await prisma.device.count();
-  const matchedDevices = await prisma.device.count({ where: { inspectionResult: "MATCH" } });
-  const notMatchedDevices = await prisma.device.count({ where: { inspectionResult: "NOT_MATCH" } });
-  
-  // Later this will be dynamic when DiscountWarehouse is built, for now just show NOT_MATCH as potential discount
-  const discountPotential = notMatchedDevices; 
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get("deviceflow_lang")?.value as Locale) || "ar";
+  const t = (key: keyof typeof translations["ar"]) => {
+    const dict = translations[locale] || translations["ar"];
+    return dict[key] || translations["ar"][key] || key;
+  };
+  const isRtl = locale === "ar";
 
-  const recentBatches = await prisma.batch.findMany({
-    take: 5,
-    orderBy: { createdAt: "desc" },
-    include: {
-      trader: { select: { name: true } },
-      _count: { select: { devices: true } }
-    }
-  });
+  // Fetch real statistics from database
+  let totalDevices = 0;
+  let matchedDevices = 0;
+  let notMatchedDevices = 0;
+  let recentBatches: any[] = [];
+  let catACount = 0;
+  let catBCount = 0;
+  let catCCount = 0;
+  let activeTradersCount = 0;
+
+  try {
+    totalDevices = await prisma.device.count();
+    matchedDevices = await prisma.device.count({ where: { inspectionResult: "MATCH" } });
+    notMatchedDevices = await prisma.device.count({ where: { inspectionResult: "NOT_MATCH" } });
+    recentBatches = await prisma.batch.findMany({
+      take: 5,
+      orderBy: { createdAt: "desc" },
+      include: {
+        trader: { select: { name: true } },
+        _count: { select: { devices: true } }
+      }
+    });
+    catACount = await prisma.discountWarehouse.count({ where: { category: "A" } });
+    catBCount = await prisma.discountWarehouse.count({ where: { category: "B" } });
+    catCCount = await prisma.discountWarehouse.count({ where: { category: "C" } });
+    const activeTraders = await prisma.batch.groupBy({
+      by: ["traderId"]
+    });
+    activeTradersCount = activeTraders.length;
+  } catch (error) {
+    console.warn("Database connection failed. Using mock stats for preview.", error);
+  }
+  
+  const discountPotential = catACount + catBCount + catCCount; 
 
   const stats = [
-    { name: "إجمالي الأجهزة المستلمة", value: totalDevices, icon: Package, color: "text-blue-600", bg: "bg-blue-100" },
-    { name: "الأجهزة المقبولة (مطابق)", value: matchedDevices, icon: CheckCircle, color: "text-green-600", bg: "bg-green-100" },
-    { name: "الأجهزة المرفوضة (مرتجع)", value: notMatchedDevices, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-100" },
-    { name: "المستودع المخفّض", value: discountPotential, icon: Tags, color: "text-amber-600", bg: "bg-amber-100" },
+    { name: t("dash_total_devices"), value: totalDevices, icon: Package, color: "text-blue-600", bg: "bg-blue-100" },
+    { name: t("dash_matching"), value: matchedDevices, icon: CheckCircle, color: "text-green-600", bg: "bg-green-100" },
+    { name: t("dash_not_matching"), value: notMatchedDevices, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-100" },
+    { name: t("wh_title"), value: discountPotential, icon: Tags, color: "text-amber-600", bg: "bg-amber-100" },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">نظرة عامة (Overview)</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{isRtl ? "نظرة عامة" : "Overview"}</h1>
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Clock className="h-4 w-4" />
-          <span>تحديث مباشر</span>
+          <span>{isRtl ? "تحديث مباشر" : "Live Updates"}</span>
         </div>
       </div>
 
@@ -67,24 +100,26 @@ export default async function Dashboard() {
         {/* Recent Batches */}
         <div className="lg:col-span-2 overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100">
           <div className="border-b border-gray-100 p-6 flex justify-between items-center">
-            <h2 className="text-lg font-medium text-gray-900">أحدث أذونات الاستلام (Batches)</h2>
-            <Link href="/batches" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">عرض الكل &rarr;</Link>
+            <h2 className="text-lg font-medium text-gray-900">{t("dash_recent_batches")}</h2>
+            <Link href="/batches" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+              {isRtl ? "عرض الكل ←" : "View All →"}
+            </Link>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-right">
+            <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? "text-right" : "text-left"}`}>
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">رقم الإذن</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">التاجر</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">التاريخ</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">عدد الأجهزة (الفعلي)</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">الحالة</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">{t("batch_id")}</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">{t("batch_trader")}</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">{t("batch_date")}</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">{t("batch_devices_count")}</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">{t("batch_status")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {recentBatches.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">لا يوجد أذونات استلام حالياً.</td>
+                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">{t("dash_no_batches")}</td>
                   </tr>
                 ) : (
                   recentBatches.map((batch) => (
@@ -93,14 +128,16 @@ export default async function Dashboard() {
                         <Link href={`/batches/${batch.id}`}>{batch.id.substring(batch.id.length - 6).toUpperCase()}</Link>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{batch.trader.name}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{new Date(batch.date).toLocaleDateString('ar-SA')}</td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                        {new Date(batch.date).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US')}
+                      </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm font-bold text-gray-700">{batch._count.devices}</td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           batch.status === "CLOSED" ? "bg-green-100 text-green-800" : 
                           batch.status === "IN_PROGRESS" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
                         }`}>
-                          {batch.status === "CLOSED" ? "مكتمل" : batch.status === "IN_PROGRESS" ? "قيد الفحص" : "جديد"}
+                          {batch.status === "CLOSED" ? t("batch_save_success") : batch.status === "IN_PROGRESS" ? t("dash_status_in_progress") : t("dash_status_open")}
                         </span>
                       </td>
                     </tr>
@@ -114,35 +151,49 @@ export default async function Dashboard() {
         {/* Discount Warehouse Summary */}
         <div className="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100">
           <div className="border-b border-gray-100 p-6">
-            <h2 className="text-lg font-medium text-gray-900">تصنيف المخفّض (قريباً)</h2>
+            <h2 className="text-lg font-medium text-gray-900">{isRtl ? "تصنيفات المستودع المخفض" : "Discount Warehouse Grades"}</h2>
           </div>
-          <div className="p-6 opacity-60">
+          <div className="p-6">
             <div className="space-y-6">
+              {/* Category A */}
               <div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-green-600">فئة A (ممتاز)</span>
-                  <span className="text-gray-500">0 جهاز</span>
+                  <span className="font-medium text-green-600">{t("wh_grade_a")}</span>
+                  <span className="text-gray-500 font-bold">{catACount} {isRtl ? "جهاز" : "items"}</span>
                 </div>
                 <div className="mt-2 w-full overflow-hidden rounded-full bg-gray-200">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: "0%" }}></div>
+                  <div 
+                    className="h-2 rounded-full bg-green-500" 
+                    style={{ width: `${discountPotential > 0 ? (catACount / discountPotential) * 100 : 0}%` }}
+                  ></div>
                 </div>
               </div>
+              
+              {/* Category B */}
               <div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-amber-600">فئة B (جيد)</span>
-                  <span className="text-gray-500">0 جهاز</span>
+                  <span className="font-medium text-amber-600">{t("wh_grade_b")}</span>
+                  <span className="text-gray-500 font-bold">{catBCount} {isRtl ? "جهاز" : "items"}</span>
                 </div>
                 <div className="mt-2 w-full overflow-hidden rounded-full bg-gray-200">
-                  <div className="h-2 rounded-full bg-amber-500" style={{ width: "0%" }}></div>
+                  <div 
+                    className="h-2 rounded-full bg-amber-500" 
+                    style={{ width: `${discountPotential > 0 ? (catBCount / discountPotential) * 100 : 0}%` }}
+                  ></div>
                 </div>
               </div>
+              
+              {/* Category C */}
               <div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-red-600">فئة C (اقتصادي)</span>
-                  <span className="text-gray-500">0 جهاز</span>
+                  <span className="font-medium text-red-600">{t("wh_grade_c")}</span>
+                  <span className="text-gray-500 font-bold">{catCCount} {isRtl ? "جهاز" : "items"}</span>
                 </div>
                 <div className="mt-2 w-full overflow-hidden rounded-full bg-gray-200">
-                  <div className="h-2 rounded-full bg-red-500" style={{ width: "0%" }}></div>
+                  <div 
+                    className="h-2 rounded-full bg-red-500" 
+                    style={{ width: `${discountPotential > 0 ? (catCCount / discountPotential) * 100 : 0}%` }}
+                  ></div>
                 </div>
               </div>
             </div>
@@ -152,9 +203,9 @@ export default async function Dashboard() {
                 <div className="flex-shrink-0">
                   <Tags className="h-5 w-5 text-indigo-400" aria-hidden="true" />
                 </div>
-                <div className="mr-3">
-                  <h3 className="text-sm font-medium text-indigo-800">جاهز للبيع</h3>
-                  <div className="mt-1 text-2xl font-semibold text-indigo-600">0</div>
+                <div className={isRtl ? "mr-3" : "ml-3"}>
+                  <h3 className="text-sm font-medium text-indigo-800">{isRtl ? "إجمالي المخفض" : "Total Discount Stock"}</h3>
+                  <div className="mt-1 text-2xl font-semibold text-indigo-600">{discountPotential}</div>
                 </div>
               </div>
             </div>

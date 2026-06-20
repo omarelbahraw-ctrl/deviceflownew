@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 
 export async function receiveDevice(formData: FormData) {
   const batchId = formData.get("batchId") as string;
@@ -12,6 +13,7 @@ export async function receiveDevice(formData: FormData) {
   const condition = formData.get("condition") as any;
   const cartonStatus = formData.get("cartonStatus") as any;
   const accessoriesStatus = formData.get("accessoriesStatus") as string;
+  const discountCategory = (formData.get("discountCategory") as any) || "B";
   
   const inspectionResult = formData.get("inspectionResult") as any;
   const faultType = formData.get("faultType") as string;
@@ -24,6 +26,21 @@ export async function receiveDevice(formData: FormData) {
   
   if (!batchId || !serialNumber) {
     return { error: "يرجى تعبئة الحقول الأساسية (السيريال)" };
+  }
+
+  // Resolve technician name from cookies session
+  let sessionName = "الفني المسؤول";
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("deviceflow_session")?.value;
+    if (sessionCookie) {
+      const session = JSON.parse(sessionCookie);
+      if (session.name) {
+        sessionName = session.name;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to get technician name from session cookie", e);
   }
 
   // Fetch the batch item to get brand, type, and model if not DIRECT
@@ -58,7 +75,7 @@ export async function receiveDevice(formData: FormData) {
       decision = "PENDING"; // Can be decided later by supervisor (Return vs Discount)
     }
 
-    await prisma.device.create({
+    const createdDevice = await prisma.device.create({
       data: {
         batchId,
         traderId,
@@ -74,13 +91,38 @@ export async function receiveDevice(formData: FormData) {
         defectType,
         notes,
         decision,
-        inspectorName: "المفتش الحالي", // In a real app, this comes from auth session
+        discountCategory,
+        inspectorName: sessionName,
         inspectionDate: new Date(),
       },
     });
 
+    // Auto sync to Discount Warehouse if status is ACCEPT, RETURNED_COMPLIANT, or NON_COMPLIANT_RECEIVED_WITH_OVERRIDE
+    const isDiscountWarehouseTrigger = 
+      decision === "ACCEPT" || 
+      decision === "RETURNED_COMPLIANT" || 
+      decision === "NON_COMPLIANT_RECEIVED_WITH_OVERRIDE";
+
+    if (isDiscountWarehouseTrigger) {
+      await prisma.discountWarehouse.create({
+        data: {
+          deviceId: createdDevice.id,
+          brand: createdDevice.brand,
+          model: createdDevice.model,
+          type: createdDevice.type,
+          serialNumber: createdDevice.serialNumber,
+          category: createdDevice.discountCategory,
+          workingStatus: "WORKING",
+          previousIssue: createdDevice.notes || createdDevice.defectType || "تحويل تلقائي من فحص أجهزة المرتجعات",
+          readyForSale: true,
+        }
+      });
+    }
+
     revalidatePath(`/batches/${batchId}/receive`);
     revalidatePath(`/batches/${batchId}`);
+    revalidatePath('/discount-warehouse');
+    revalidatePath('/'); // Refresh dashboard
     return { success: true };
   } catch (error) {
     console.error("Error receiving device:", error);

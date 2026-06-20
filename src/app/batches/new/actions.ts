@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 export type DeviceEntry = {
   id: string; // client-side temp ID
@@ -15,14 +16,32 @@ export type DeviceEntry = {
   accessoriesStatus: string;
   notes: string;
   imageBase64: string | null;
+  discountCategory?: string;
 };
 
 export async function createBatchWithDevices(
   traderId: string,
-  devices: DeviceEntry[]
+  devices: DeviceEntry[],
+  reportNumber?: string | null,
+  representative?: string | null
 ) {
   if (!traderId) return { error: "يرجى اختيار العميل" };
   if (devices.length === 0) return { error: "يرجى إضافة بند واحد على الأقل" };
+
+  // Resolve technician name from cookies session
+  let sessionName = "الفني المسؤول";
+  try {
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get("deviceflow_session")?.value;
+    if (sessionCookie) {
+      const session = JSON.parse(sessionCookie);
+      if (session.name) {
+        sessionName = session.name;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to get technician name from session cookie", e);
+  }
 
   // Validate trader exists
   const trader = await prisma.trader.findUnique({ where: { id: traderId } });
@@ -47,19 +66,21 @@ export async function createBatchWithDevices(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Create the batch
+      // Create the batch with reportNumber and representative
       const batch = await tx.batch.create({
         data: {
           traderId,
           status: "CLOSED",
           closedAt: new Date(),
+          reportNumber: reportNumber || null,
+          representative: representative || null,
         },
       });
 
       // Create all devices
       for (const device of devices) {
-        const decision = device.inspectionResult === "MATCH" ? "ACCEPT" : "PENDING";
-        await tx.device.create({
+        const decision = (device.inspectionResult === "MATCH" ? "ACCEPT" : "PENDING") as any;
+        const createdDevice = await tx.device.create({
           data: {
             batchId: batch.id,
             traderId,
@@ -75,10 +96,33 @@ export async function createBatchWithDevices(
             notes: device.notes || null,
             imageBase64: device.imageBase64 || null,
             decision,
-            inspectorName: "المفتش الحالي",
+            discountCategory: (device.discountCategory as any) || "B",
+            inspectorName: sessionName,
             inspectionDate: new Date(),
           },
         });
+
+        // Sync to Discount Warehouse if status is ACCEPT, RETURNED_COMPLIANT, or NON_COMPLIANT_RECEIVED_WITH_OVERRIDE
+        const isDiscountWarehouseTrigger = 
+          decision === "ACCEPT" || 
+          decision === "RETURNED_COMPLIANT" || 
+          decision === "NON_COMPLIANT_RECEIVED_WITH_OVERRIDE";
+
+        if (isDiscountWarehouseTrigger) {
+          await tx.discountWarehouse.create({
+            data: {
+              deviceId: createdDevice.id,
+              brand: createdDevice.brand,
+              model: createdDevice.model,
+              type: createdDevice.type,
+              serialNumber: createdDevice.serialNumber,
+              category: createdDevice.discountCategory,
+              workingStatus: "WORKING", // Default status WORKING
+              previousIssue: createdDevice.notes || "تحويل تلقائي من فحص أجهزة المرتجعات",
+              readyForSale: true,
+            }
+          });
+        }
       }
 
       return batch;

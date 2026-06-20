@@ -15,11 +15,15 @@ import {
   ChevronUp,
   AlertCircle,
   Save,
+  Loader2,
+  Scan,
 } from "lucide-react";
 import { createTrader } from "@/app/traders/actions";
 import { createBatchWithDevices, DeviceEntry } from "./actions";
 import { getSystemSettings } from "@/app/settings/actions";
 import { DEFAULT_SETTINGS } from "@/app/settings/constants";
+import { useTranslation } from "@/components/layout/LanguageContext";
+import clsx from "clsx";
 
 type Trader = { id: string; name: string; phone: string | null };
 
@@ -27,19 +31,47 @@ export default function NewBatchForm({
   traders: initialTraders,
   uniqueBrands,
   uniqueModels,
+  nextReportNumber,
 }: {
   traders: Trader[];
   uniqueBrands: string[];
   uniqueModels: string[];
+  nextReportNumber: string;
 }) {
   const router = useRouter();
+  const { t, isRtl } = useTranslation();
   const [traders, setTraders] = useState<Trader[]>(initialTraders);
   const [selectedTraderId, setSelectedTraderId] = useState("");
+  const [reportNumber, setReportNumber] = useState(nextReportNumber || "");
+  const [representative, setRepresentative] = useState("");
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [devices, setDevices] = useState<DeviceEntry[]>([]);
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
+
+  // Barcode scanner simulation state
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+
+  const handleSimulateScanner = () => {
+    setIsScannerOpen(true);
+    setIsScanning(true);
+    setError("");
+
+    // Generate a random serial after 2 seconds
+    setTimeout(() => {
+      setIsScanning(false);
+      const randomDigits = Math.floor(100000 + Math.random() * 900000);
+      const randomSerial = `SN-2026-X${randomDigits}`;
+      setSerialNumber(randomSerial);
+      setTimeout(() => {
+        setIsScannerOpen(false);
+        // Focus the add button or input
+        setTimeout(() => serialInputRef.current?.focus(), 100);
+      }, 800);
+    }, 2000);
+  };
 
   const [deviceTypes, setDeviceTypes] = useState<string[]>(DEFAULT_SETTINGS.DEVICE_TYPES);
   const [knownBrands, setKnownBrands] = useState<string[]>(DEFAULT_SETTINGS.KNOWN_BRANDS);
@@ -54,6 +86,7 @@ export default function NewBatchForm({
   const [faultType, setFaultType] = useState(DEFAULT_SETTINGS.FAULT_TYPES[0]);
   const [accessoriesStatus, setAccessoriesStatus] = useState("كامل ملحقاته والكرتون سليم");
   const [notes, setNotes] = useState("");
+  const [discountCategory, setDiscountCategory] = useState("B");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,7 +113,7 @@ export default function NewBatchForm({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
-      alert("حجم الصورة يجب أن يكون أقل من 3 ميجابايت");
+      alert(t("new_batch_error_image_size"));
       return;
     }
     const reader = new FileReader();
@@ -95,21 +128,21 @@ export default function NewBatchForm({
   // Add device to local list
   const handleAddDevice = () => {
     if (!serialNumber.trim()) {
-      setError("يرجى إدخال رقم السيريال");
+      setError(t("new_batch_error_serial"));
       return;
     }
     if (!brand.trim()) {
-      setError("يرجى إدخال البراند");
+      setError(t("new_batch_error_brand"));
       return;
     }
     if (!model.trim()) {
-      setError("يرجى إدخال الموديل");
+      setError(t("new_batch_error_model"));
       return;
     }
 
     // Check local duplicates
     if (devices.some((d) => d.serialNumber === serialNumber.trim())) {
-      setError("رقم السيريال مضاف بالفعل في هذا الإذن!");
+      setError(t("new_batch_error_duplicate"));
       return;
     }
 
@@ -124,6 +157,7 @@ export default function NewBatchForm({
       accessoriesStatus,
       notes: notes.trim(),
       imageBase64,
+      discountCategory,
     };
 
     setDevices([...devices, newDevice]);
@@ -138,6 +172,7 @@ export default function NewBatchForm({
     setImagePreview(null);
     setInspectionResult("MATCH");
     setFaultType(faultTypesList[0] || "");
+    setDiscountCategory("B");
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     // Focus serial number for quick next entry
@@ -152,11 +187,11 @@ export default function NewBatchForm({
   // Save the entire batch
   const handleSaveBatch = async () => {
     if (!selectedTraderId) {
-      setError("يرجى اختيار العميل أولاً");
+      setError(t("new_batch_error_select_trader"));
       return;
     }
     if (devices.length === 0) {
-      setError("يرجى إضافة بند واحد على الأقل");
+      setError(t("new_batch_error_no_devices"));
       return;
     }
 
@@ -167,7 +202,7 @@ export default function NewBatchForm({
       ? traders.find((t) => t.id === selectedTraderId)?.name || ""
       : selectedTraderId;
 
-    const res = await createBatchWithDevices(finalTraderId, devices);
+    const res = await createBatchWithDevices(finalTraderId, devices, reportNumber, representative);
     if (res?.error) {
       setError(res.error);
       setIsSaving(false);
@@ -203,16 +238,16 @@ export default function NewBatchForm({
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
               <FileText className="h-6 w-6 text-indigo-600" />
-              إنشاء إذن استلام جديد
+              {t("new_batch_title")}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              اختر العميل ثم أضف البنود واحداً تلو الآخر مع ملاحظات الفحص
+              {t("new_batch_subtitle")}
             </p>
           </div>
           {devices.length > 0 && (
             <div className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl font-bold text-sm border border-indigo-200">
-              <Package className="h-4 w-4 inline ml-1" />
-              {devices.length} بند مضاف
+              <Package className={clsx("h-4 w-4 inline", isRtl ? "ml-1" : "mr-1")} />
+              {devices.length} {t("new_batch_items_added")}
             </div>
           )}
         </div>
@@ -223,31 +258,60 @@ export default function NewBatchForm({
           </div>
         )}
 
-        {/* Step 1: Customer Selection */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <label className="block text-sm font-bold text-gray-800 mb-3">
-            ① اختر العميل (التاجر) *
-          </label>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <select
-              value={selectedTraderId}
-              onChange={(e) => setSelectedTraderId(e.target.value)}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-3 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">-- اختر العميل من القائمة --</option>
-              {traders.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} {t.phone ? `(${t.phone})` : ""}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setIsPopupOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-bold hover:bg-indigo-100 transition-colors"
-            >
-              <Plus className="h-5 w-5" /> إضافة عميل جديد
-            </button>
+        {/* Step 1: Customer Selection & Batch Details */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+          <div>
+            <label className="block text-sm font-bold text-gray-800 mb-3">
+              {t("new_batch_select_trader_label")}
+            </label>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select
+                value={selectedTraderId}
+                onChange={(e) => setSelectedTraderId(e.target.value)}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-3 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold"
+              >
+                <option value="">{t("new_batch_select_trader")}</option>
+                {traders.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} {t.phone ? `(${t.phone})` : ""}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setIsPopupOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-bold hover:bg-indigo-100 transition-colors"
+              >
+                <Plus className="h-5 w-5" /> {t("new_batch_btn_new_trader")}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                {t("new_batch_report_no_label")}
+              </label>
+              <input
+                type="text"
+                value={reportNumber}
+                onChange={(e) => setReportNumber(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder={t("new_batch_report_no_placeholder")}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                {t("new_batch_rep_label")}
+              </label>
+              <input
+                type="text"
+                value={representative}
+                onChange={(e) => setRepresentative(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder={t("new_batch_rep_placeholder")}
+              />
+            </div>
           </div>
         </div>
 
@@ -258,17 +322,17 @@ export default function NewBatchForm({
           }`}
         >
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-l from-indigo-50 to-white border-b border-gray-100 px-6 py-4">
+            <div className={clsx("border-b border-gray-100 px-6 py-4", isRtl ? "bg-gradient-to-l from-indigo-50 to-white" : "bg-gradient-to-r from-indigo-50 to-white")}>
               <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <Package className="h-5 w-5 text-indigo-500" />
-                ② إضافة بند جديد
+                {t("new_batch_step2")}
               </h2>
             </div>
 
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">نوع الجهاز *</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t("new_batch_device_type")}</label>
                   <select
                     value={deviceType}
                     onChange={(e) => setDeviceType(e.target.value)}
@@ -280,40 +344,51 @@ export default function NewBatchForm({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">البراند *</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t("new_batch_brand")}</label>
                   <input
                     type="text"
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
                     list="brands"
                     className="w-full rounded-lg border border-gray-300 px-3 py-3"
-                    placeholder="مثال: Samsung"
+                    placeholder={isRtl ? "مثال: Samsung" : "e.g., Samsung"}
                   />
                   <datalist id="brands">
                     {Array.from(new Set([...knownBrands, ...uniqueBrands])).map((b) => (<option key={b} value={b} />))}
                   </datalist>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">الموديل *</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t("new_batch_model")}</label>
                   <input
                     type="text"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     list="models"
                     className="w-full rounded-lg border border-gray-300 px-3 py-3"
-                    placeholder="الموديل..."
+                    placeholder={isRtl ? "الموديل..." : "Model..."}
                   />
                   <datalist id="models">
-                    {uniqueModels.map((m) => (<option key={m} value={m} />))}
+                    {Array.from(new Set(["UA55TU7000", "GWC18QD", "OFT-2026", "NKI-43FHD", "SRN-500", ...uniqueModels])).map((m) => (
+                      <option key={m} value={m} />
+                    ))}
                   </datalist>
                 </div>
               </div>
 
               {/* Serial Number - prominent */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">
-                  رقم السيريال (الباركود) *
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-bold text-gray-700">
+                    {t("new_batch_serial")}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSimulateScanner}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-all shadow-sm"
+                  >
+                    <Scan className="h-3.5 w-3.5" /> {t("new_batch_scanner_sim")}
+                  </button>
+                </div>
                 <input
                   ref={serialInputRef}
                   type="text"
@@ -326,25 +401,25 @@ export default function NewBatchForm({
                     }
                   }}
                   className="w-full rounded-lg border-2 border-indigo-200 px-4 py-4 text-lg font-mono tracking-widest uppercase bg-yellow-50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                  placeholder="قم بمسح الباركود هنا..."
+                  placeholder={t("new_batch_serial_placeholder")}
                   autoFocus
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">القرار الفني *</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t("new_batch_result")}</label>
                   <select
                     value={inspectionResult}
                     onChange={(e) => setInspectionResult(e.target.value)}
                     className="w-full rounded-lg border-2 border-gray-300 px-3 py-3 bg-gray-50"
                   >
-                    <option value="MATCH">✅ مطابق (سليم ومقبول)</option>
-                    <option value="NOT_MATCH">❌ غير مطابق (مرفوض / مخفض)</option>
+                    <option value="MATCH">{t("new_batch_result_match")}</option>
+                    <option value="NOT_MATCH">{t("new_batch_result_not_match")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">العطل (إن وجد)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t("new_batch_fault")}</label>
                   <select
                     value={faultType}
                     onChange={(e) => setFaultType(e.target.value)}
@@ -356,15 +431,27 @@ export default function NewBatchForm({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">الملحقات والكرتون</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t("new_batch_accessories")}</label>
                   <select
                     value={accessoriesStatus}
                     onChange={(e) => setAccessoriesStatus(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-3"
                   >
-                    <option value="كامل ملحقاته والكرتون سليم">كامل سليم</option>
-                    <option value="غير كامل ملحقاته">نواقص</option>
-                    <option value="بدون ملحقات">بدون</option>
+                    <option value="كامل ملحقاته والكرتون سليم">{t("new_batch_acc_full")}</option>
+                    <option value="غير كامل ملحقاته">{t("new_batch_acc_missing")}</option>
+                    <option value="بدون ملحقات">{t("new_batch_acc_none")}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t("new_batch_category")}</label>
+                  <select
+                    value={discountCategory}
+                    onChange={(e) => setDiscountCategory(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-3 font-bold bg-white text-gray-900"
+                  >
+                    <option value="A">{t("rec_cat_a").split(" (")[0]}</option>
+                    <option value="B">{t("rec_cat_b").split(" (")[0]}</option>
+                    <option value="C">{t("rec_cat_c").split(" (")[0]}</option>
                   </select>
                 </div>
               </div>
@@ -372,17 +459,17 @@ export default function NewBatchForm({
               {/* Notes & Image */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">ملاحظات الفحص</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">{t("new_batch_notes")}</label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-3 min-h-[100px] resize-y"
-                    placeholder="أضف ملاحظات الفحص هنا... (اختياري)"
+                    placeholder={isRtl ? "أضف ملاحظات الفحص هنا... (اختياري)" : "Add inspection notes here... (optional)"}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    <Camera className="h-4 w-4 inline ml-1" /> صورة حالة الجهاز
+                    <Camera className={clsx("h-4 w-4 inline", isRtl ? "ml-1" : "mr-1")} /> {t("new_batch_image")}
                   </label>
                   <div
                     className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-colors min-h-[100px] flex flex-col items-center justify-center"
@@ -403,17 +490,17 @@ export default function NewBatchForm({
                             setImagePreview(null);
                             if (fileInputRef.current) fileInputRef.current.value = "";
                           }}
-                          className="absolute -top-2 -left-2 bg-red-500 text-white rounded-full p-0.5"
+                          className="absolute top-2 left-2 bg-red-500 text-white rounded-full p-0.5"
                         >
                           <X className="h-3 w-3" />
                         </button>
-                        <p className="text-xs text-green-600 mt-1 font-bold">✓ تم رفع الصورة</p>
+                        <p className="text-xs text-green-600 mt-1 font-bold">{isRtl ? "✓ تم رفع الصورة" : "✓ Image uploaded"}</p>
                       </div>
                     ) : (
                       <>
                         <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500">اضغط لرفع صورة</p>
-                        <p className="text-xs text-gray-400">أقصى حجم: 3 ميجابايت</p>
+                        <p className="text-sm text-gray-500">{t("new_batch_click_upload")}</p>
+                        <p className="text-xs text-gray-400">{t("new_batch_max_size")}</p>
                       </>
                     )}
                   </div>
@@ -434,7 +521,7 @@ export default function NewBatchForm({
                 onClick={handleAddDevice}
                 className="w-full flex justify-center items-center gap-2 py-4 px-4 border-2 border-dashed border-indigo-300 rounded-xl text-lg font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-400 transition-all"
               >
-                <Plus className="h-6 w-6" /> إضافة هذا البند للإذن
+                <Plus className="h-6 w-6" /> {t("new_batch_btn_add_device")}
               </button>
             </div>
           </div>
@@ -443,10 +530,10 @@ export default function NewBatchForm({
         {/* Step 3: Added Devices List */}
         {devices.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-l from-green-50 to-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+            <div className={clsx("border-b border-gray-100 px-6 py-4 flex items-center justify-between", isRtl ? "bg-gradient-to-l from-green-50 to-white" : "bg-gradient-to-r from-green-50 to-white")}>
               <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <Check className="h-5 w-5 text-green-500" />
-                ③ البنود المضافة ({devices.length} بند)
+                {t("new_batch_step3")} ({devices.length} {t("new_batch_items_added")})
               </h2>
             </div>
 
@@ -491,7 +578,10 @@ export default function NewBatchForm({
                                 : "bg-red-100 text-red-700"
                             }`}
                           >
-                            {device.inspectionResult === "MATCH" ? "✅ مطابق" : "❌ غير مطابق"}
+                            {device.inspectionResult === "MATCH" ? (isRtl ? "✅ مطابق" : "✅ Matching") : (isRtl ? "❌ غير مطابق" : "❌ Non-matching")}
+                          </span>
+                          <span className="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            {isRtl ? `فئة ${device.discountCategory || "B"}` : `Grade ${device.discountCategory || "B"}`}
                           </span>
                         </div>
                       </div>
@@ -505,7 +595,7 @@ export default function NewBatchForm({
                           setExpandedDevice(expandedDevice === device.id ? null : device.id)
                         }
                         className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="عرض التفاصيل"
+                        title={isRtl ? "عرض التفاصيل" : "View Details"}
                       >
                         {expandedDevice === device.id ? (
                           <ChevronUp className="h-5 w-5" />
@@ -517,7 +607,7 @@ export default function NewBatchForm({
                         type="button"
                         onClick={() => removeDevice(device.id)}
                         className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="حذف البند"
+                        title={t("wh_btn_delete")}
                       >
                         <Trash2 className="h-5 w-5" />
                       </button>
@@ -526,26 +616,32 @@ export default function NewBatchForm({
 
                   {/* Expanded details */}
                   {expandedDevice === device.id && (
-                    <div className="px-6 pb-4 mr-14 bg-gray-50 rounded-lg mx-4 mb-3 p-4">
+                    <div className={clsx("pb-4 bg-gray-50 rounded-lg mx-4 mb-3 p-4", isRtl ? "mr-14" : "ml-14")}>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                         <div>
-                          <span className="block text-xs text-gray-500">العطل</span>
+                          <span className="block text-xs text-gray-500">{t("new_batch_fault")}</span>
                           <span className="font-bold text-gray-800">{device.faultType}</span>
                         </div>
                         <div>
-                          <span className="block text-xs text-gray-500">الملحقات</span>
+                          <span className="block text-xs text-gray-500">{t("new_batch_accessories")}</span>
                           <span className="font-bold text-gray-800">{device.accessoriesStatus}</span>
                         </div>
-                        <div className="col-span-2">
-                          <span className="block text-xs text-gray-500">ملاحظات الفحص</span>
+                        <div>
+                          <span className="block text-xs text-gray-500">{t("new_batch_category").replace(" *", "")}</span>
+                          <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded text-xs">
+                            {isRtl ? `فئة ${device.discountCategory || "B"}` : `Grade ${device.discountCategory || "B"}`}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-xs text-gray-500">{t("new_batch_notes")}</span>
                           <span className="font-bold text-gray-800">
-                            {device.notes || "—لا توجد ملاحظات—"}
+                            {device.notes || (isRtl ? "—لا توجد ملاحظات—" : "—No notes—")}
                           </span>
                         </div>
                       </div>
                       {device.imageBase64 && (
                         <div className="mt-3">
-                          <span className="block text-xs text-gray-500 mb-1">صورة الجهاز</span>
+                          <span className="block text-xs text-gray-500 mb-1">{t("new_batch_image")}</span>
                           <img
                             src={device.imageBase64}
                             alt="صورة الجهاز"
@@ -560,7 +656,7 @@ export default function NewBatchForm({
             </div>
 
             {/* Save Button */}
-            <div className="p-6 bg-gradient-to-l from-green-50 to-white border-t border-gray-100">
+            <div className={clsx("p-6 border-t border-gray-100", isRtl ? "bg-gradient-to-l from-green-50 to-white" : "bg-gradient-to-r from-green-50 to-white")}>
               <button
                 type="button"
                 onClick={handleSaveBatch}
@@ -568,16 +664,16 @@ export default function NewBatchForm({
                 className="w-full flex justify-center items-center gap-3 py-5 px-6 border border-transparent rounded-2xl shadow-lg text-xl font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 transition-all hover:shadow-xl"
               >
                 {isSaving ? (
-                  "جاري حفظ الإذن..."
+                  t("new_batch_saving")
                 ) : (
                   <>
-                    <Save className="h-7 w-7" />
-                    حفظ الإذن ({devices.length} بند)
+                    <Save className={clsx("h-7 w-7", isRtl ? "ml-2" : "mr-2")} />
+                    {t("new_batch_btn_save_batch")} ({devices.length} {t("new_batch_items_added")})
                   </>
                 )}
               </button>
               <p className="text-center text-xs text-gray-500 mt-3">
-                بعد الحفظ سيتم تحويلك لقسم سجل الأذونات ويمكنك الاطلاع عليه في أي وقت.
+                {t("new_batch_save_info")}
               </p>
             </div>
           </div>
@@ -589,7 +685,7 @@ export default function NewBatchForm({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-              <h3 className="font-bold text-gray-900">إضافة عميل جديد سريعاً</h3>
+              <h3 className="font-bold text-gray-900">{t("new_batch_quick_add_trader")}</h3>
               <button
                 onClick={() => setIsPopupOpen(false)}
                 className="text-gray-400 hover:text-gray-700 p-1"
@@ -600,7 +696,7 @@ export default function NewBatchForm({
             <form onSubmit={handleAddTrader} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  اسم العميل/التاجر *
+                  {t("new_batch_trader_name")}
                 </label>
                 <input
                   type="text"
@@ -612,7 +708,7 @@ export default function NewBatchForm({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  رقم الهاتف (اختياري)
+                  {t("new_batch_trader_phone")}
                 </label>
                 <input
                   type="tel"
@@ -620,14 +716,88 @@ export default function NewBatchForm({
                   className="w-full border border-gray-300 rounded-lg px-3 py-3 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
-              <input type="hidden" name="address" value="تمت الإضافة من الإدخال السريع" />
+              <input type="hidden" name="address" value="Quick add from batch intake" />
               <button
                 type="submit"
                 className="w-full bg-indigo-600 text-white font-bold rounded-lg px-4 py-3 mt-4 hover:bg-indigo-700 transition-colors"
               >
-                حفظ واختيار العميل
+                {t("new_batch_btn_save_trader")}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Scanner Simulation Modal */}
+      {isScannerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+          <div className="bg-slate-900 text-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-700">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-800/50">
+              <h3 className="font-bold text-slate-200 flex items-center gap-2">
+                <Camera className="h-5 w-5 text-indigo-400" />
+                {t("new_batch_scanner_modal_title")}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsScannerOpen(false)}
+                className="text-slate-400 hover:text-slate-200 p-1"
+                disabled={isScanning}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="p-8 flex flex-col items-center justify-center space-y-6">
+              {/* Viewfinder area */}
+              <div className="relative w-64 h-48 border-4 border-slate-500 rounded-xl bg-slate-950 overflow-hidden flex items-center justify-center shadow-inner">
+                {/* Viewfinder corners */}
+                <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-indigo-500"></div>
+                <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-indigo-500"></div>
+                <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-indigo-500"></div>
+                <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-indigo-500"></div>
+                
+                {/* Barcode representation */}
+                <div className="flex gap-1.5 opacity-40">
+                  <div className="w-1.5 h-24 bg-white"></div>
+                  <div className="w-3 h-24 bg-white"></div>
+                  <div className="w-1 h-24 bg-white"></div>
+                  <div className="w-4 h-24 bg-white"></div>
+                  <div className="w-2.5 h-24 bg-white"></div>
+                  <div className="w-1.5 h-24 bg-white"></div>
+                  <div className="w-3 h-24 bg-white"></div>
+                  <div className="w-2 h-24 bg-white"></div>
+                </div>
+                
+                {/* Laser animation */}
+                {isScanning && (
+                  <div className="absolute left-0 w-full h-1 bg-red-500 shadow-[0_0_10px_#ef4444] animate-pulse" style={{ transform: 'translateY(24px)' }}></div>
+                )}
+                
+                {!isScanning && (
+                  <div className="absolute inset-0 bg-green-500/10 flex items-center justify-center text-green-400 font-bold text-sm">
+                    {isRtl ? "✓ تم قراءة الكود بنجاح" : "✓ Code read successfully"}
+                  </div>
+                )}
+              </div>
+              
+              {/* Status and spinner */}
+              <div className="text-center">
+                {isScanning ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <Loader2 className="h-5 w-5 text-indigo-400 animate-spin" />
+                    <span className="font-bold text-slate-300">{t("new_batch_scanner_scanning")}</span>
+                  </div>
+                ) : (
+                  <div className="text-green-400 font-bold text-lg flex items-center justify-center gap-2">
+                    <Check className="h-6 w-6 stroke-[3]" />
+                    <span>{t("new_batch_scanner_success")}</span>
+                  </div>
+                )}
+                <p className="text-xs text-slate-500 mt-2">
+                  {t("new_batch_scanner_info")}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

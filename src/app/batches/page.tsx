@@ -14,15 +14,30 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { deleteBatch } from "./actions";
+import { cookies } from "next/headers";
+import { translations, Locale } from "@/lib/translations";
 
 export default async function BatchesPage() {
-  const batches = await prisma.batch.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      trader: { select: { name: true } },
-      _count: { select: { devices: true, items: true } },
-    },
-  });
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get("deviceflow_lang")?.value as Locale) || "ar";
+  const t = (key: keyof typeof translations["ar"]) => {
+    const dict = translations[locale] || translations["ar"];
+    return dict[key] || translations["ar"][key] || key;
+  };
+  const isRtl = locale === "ar";
+
+  let batches: any[] = [];
+  try {
+    batches = await prisma.batch.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        trader: { select: { name: true } },
+        _count: { select: { devices: true, items: true } },
+      },
+    });
+  } catch (error) {
+    console.warn("Database connection failed. Using mock batches for preview.", error);
+  }
 
   // Stats
   const totalBatches = batches.length;
@@ -31,23 +46,23 @@ export default async function BatchesPage() {
   const totalDevices = batches.reduce((sum, b) => sum + b._count.devices, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <FileText className="h-6 w-6 text-indigo-600" />
-            سجل الأذونات
+            {t("nav_batches")}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            جميع أذونات الاستلام والفحص المسجلة في النظام
+            {isRtl ? "جميع أذونات الاستلام والفحص المسجلة في النظام" : "All device receipt and inspection records registered in the system"}
           </p>
         </div>
         <Link
           href="/batches/new"
           className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg"
         >
-          <Plus className="h-5 w-5" /> إذن استلام جديد
+          <Plus className="h-5 w-5" /> {t("nav_new_batch")}
         </Link>
       </div>
 
@@ -59,7 +74,7 @@ export default async function BatchesPage() {
               <FileText className="h-5 w-5 text-indigo-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500">إجمالي الأذونات</p>
+              <p className="text-xs text-gray-500">{isRtl ? "إجمالي الأذونات" : "Total Receipts"}</p>
               <p className="text-xl font-bold text-gray-900">{totalBatches}</p>
             </div>
           </div>
@@ -70,7 +85,7 @@ export default async function BatchesPage() {
               <Clock className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500">أذونات مفتوحة</p>
+              <p className="text-xs text-gray-500">{isRtl ? "أذونات مفتوحة" : "Open Receipts"}</p>
               <p className="text-xl font-bold text-amber-600">{openBatches}</p>
             </div>
           </div>
@@ -81,7 +96,7 @@ export default async function BatchesPage() {
               <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500">أذونات مكتملة</p>
+              <p className="text-xs text-gray-500">{isRtl ? "أذونات مكتملة" : "Closed Receipts"}</p>
               <p className="text-xl font-bold text-green-600">{closedBatches}</p>
             </div>
           </div>
@@ -92,7 +107,7 @@ export default async function BatchesPage() {
               <Package className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500">إجمالي الأجهزة</p>
+              <p className="text-xs text-gray-500">{t("dash_total_devices")}</p>
               <p className="text-xl font-bold text-blue-600">{totalDevices}</p>
             </div>
           </div>
@@ -104,9 +119,9 @@ export default async function BatchesPage() {
         <div className="bg-slate-50 border-b border-gray-100 px-6 py-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <Hash className="h-5 w-5 text-gray-400" />
-            قائمة الأذونات
+            {isRtl ? "قائمة الأذونات" : "Receipt Batches"}
           </h2>
-          <span className="text-sm text-gray-500">{totalBatches} إذن</span>
+          <span className="text-sm text-gray-500">{totalBatches} {isRtl ? "إذن" : "Records"}</span>
         </div>
 
         {batches.length === 0 ? (
@@ -114,40 +129,48 @@ export default async function BatchesPage() {
             <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <FileText className="h-8 w-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-700 mb-2">لا توجد أذونات بعد</h3>
-            <p className="text-sm text-gray-500 mb-6">قم بفتح أول إذن استلام لبدء تسجيل الأجهزة.</p>
+            <h3 className="text-lg font-bold text-gray-700 mb-2">{t("dash_no_batches")}</h3>
+            <p className="text-sm text-gray-500 mb-6">{isRtl ? "قم بفتح أول إذن استلام لبدء تسجيل الأجهزة." : "Open your first receipt record to start registering devices."}</p>
             <Link
               href="/batches/new"
               className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-colors"
             >
-              <Plus className="h-5 w-5" /> فتح إذن جديد
+              <Plus className="h-5 w-5" /> {isRtl ? "فتح إذن جديد" : "Open New Batch"}
             </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-right">
+            <table className={`min-w-full ${isRtl ? "text-right" : "text-left"}`}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">رقم الإذن</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">العميل / التاجر</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">التاريخ والوقت</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">عدد الأجهزة</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">الحالة</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">إجراءات</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{isRtl ? "رقم الإذن / البلاغ" : "Receipt ID / Report #"}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{t("batch_trader")}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{t("batch_rep")}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{isRtl ? "التاريخ والوقت" : "Date & Time"}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_devices_count")}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_status")}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {batches.map((batch) => (
                   <tr key={batch.id} className="hover:bg-indigo-50/30 transition-colors">
-                    {/* رقم الإذن */}
+                    {/* رقم الإذن / البلاغ */}
                     <td className="px-6 py-4">
-                      <Link
-                        href={`/batches/${batch.id}`}
-                        className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
-                      >
-                        <FileText className="h-4 w-4" />
-                        {batch.id.substring(batch.id.length - 6).toUpperCase()}
-                      </Link>
+                      <div className="flex flex-col gap-1">
+                        <Link
+                          href={`/batches/${batch.id}`}
+                          className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors w-max"
+                        >
+                          <FileText className="h-4 w-4" />
+                          {batch.id.substring(batch.id.length - 6).toUpperCase()}
+                        </Link>
+                        {batch.reportNumber && (
+                          <span className="text-xs text-amber-600 font-bold px-1">
+                            {isRtl ? "بلاغ:" : "Report:"} {batch.reportNumber}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* العميل */}
@@ -160,14 +183,21 @@ export default async function BatchesPage() {
                       </div>
                     </td>
 
+                    {/* المندوب */}
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-gray-700">{batch.representative || "—"}</span>
+                    </td>
+
                     {/* التاريخ */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 text-sm text-gray-600">
                         <Calendar className="h-4 w-4 text-gray-400" />
                         <div>
-                          <span className="block font-medium">{new Date(batch.date).toLocaleDateString("ar-SA")}</span>
+                          <span className="block font-medium">
+                            {new Date(batch.date).toLocaleDateString(isRtl ? "ar-SA" : "en-US")}
+                          </span>
                           <span className="block text-xs text-gray-400">
-                            {new Date(batch.createdAt).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(batch.createdAt).toLocaleTimeString(isRtl ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
                       </div>
@@ -192,11 +222,11 @@ export default async function BatchesPage() {
                         }`}
                       >
                         {batch.status === "CLOSED" ? (
-                          <><CheckCircle className="h-3.5 w-3.5" /> مكتمل</>
+                          <><CheckCircle className="h-3.5 w-3.5" /> {isRtl ? "مكتمل" : "Closed"}</>
                         ) : batch.status === "IN_PROGRESS" ? (
-                          <><Clock className="h-3.5 w-3.5" /> قيد الفحص</>
+                          <><Clock className="h-3.5 w-3.5" /> {t("dash_status_in_progress")}</>
                         ) : (
-                          <><AlertCircle className="h-3.5 w-3.5" /> جديد</>
+                          <><AlertCircle className="h-3.5 w-3.5" /> {t("dash_status_open")}</>
                         )}
                       </span>
                     </td>
@@ -207,10 +237,10 @@ export default async function BatchesPage() {
                         <Link
                           href={`/batches/${batch.id}`}
                           className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
-                          title="عرض التفاصيل"
+                          title={t("batch_btn_details")}
                         >
                           <Eye className="h-4 w-4" />
-                          <span className="hidden sm:inline">تفاصيل</span>
+                          <span className="hidden sm:inline">{isRtl ? "تفاصيل" : "Details"}</span>
                         </Link>
                         <form
                           action={async () => {
@@ -221,9 +251,24 @@ export default async function BatchesPage() {
                           <button
                             type="submit"
                             className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                            title="حذف الإذن"
+                            title={t("batch_btn_delete")}
                           >
                             <Trash2 className="h-4 w-4" />
+                            <span className="hidden sm:inline">{isRtl ? "حذف" : "Delete"}</span>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}-4" />
                             <span className="hidden sm:inline">حذف</span>
                           </button>
                         </form>

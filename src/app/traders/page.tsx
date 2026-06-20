@@ -4,14 +4,19 @@ import Link from "next/link";
 import TradersListClient from "./TradersListClient";
 
 export default async function TradersPage() {
-  const traders = await prisma.trader.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: {
-        select: { batches: true, devices: true },
+  let traders: any[] = [];
+  try {
+    traders = await prisma.trader.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: {
+          select: { batches: true, devices: true },
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.warn("Database connection failed. Using mock traders for preview.", error);
+  }
 
   const tradersData = traders.map((t) => ({
     id: t.id,

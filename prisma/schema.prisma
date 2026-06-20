@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 enum Role {
@@ -50,18 +49,20 @@ enum BatchStatus {
 }
 
 model Batch {
-  id        String      @id @default(cuid())
-  traderId  String
-  date      DateTime    @default(now())
-  status    BatchStatus @default(OPEN)
-  closedAt  DateTime?
+  id             String      @id @default(cuid())
+  traderId       String
+  date           DateTime    @default(now())
+  status         BatchStatus @default(OPEN)
+  closedAt       DateTime?
+  reportNumber   String?     // رقم البلاغ / بلاغ العميل
+  representative String?     // اسم المندوب
 
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  trader    Trader      @relation(fields: [traderId], references: [id])
-  items     BatchItem[] // الأصناف المتوقع استلامها في هذا الإذن
-  devices   Device[]    // الأجهزة الفعلية التي تم استلامها
+  trader         Trader      @relation(fields: [traderId], references: [id])
+  items          BatchItem[] // الأصناف المتوقع استلامها في هذا الإذن
+  devices        Device[]    // الأجهزة الفعلية التي تم استلامها
 }
 
 model BatchItem {
@@ -100,6 +101,14 @@ enum Decision {
   ACCEPT
   RETURN
   DISCOUNT
+  IN_WORKSHOP
+  READY_FOR_DELIVERY
+  REPAIRED_AND_DELIVERED
+  REPAIRED_BUT_REJECTED
+  REJECTED_AND_DELIVERY_REJECTED
+  NON_COMPLIANT_NOT_RECEIVED
+  NON_COMPLIANT_RECEIVED_WITH_OVERRIDE
+  RETURNED_COMPLIANT
 }
 
 model Device {
@@ -120,6 +129,7 @@ model Device {
   inspectorName    String?
   inspectionDate   DateTime?
   notes            String?          // التقرير الفني والملاحظات
+  discountCategory DiscountCategory @default(B)
   imageBase64      String?          // صورة حالة الجهاز (Base64)
 
   createdAt        DateTime         @default(now())
@@ -203,4 +213,30 @@ model SystemSetting {
   key       String   @unique
   value     String   // JSON encoded array of strings
   updatedAt DateTime @updatedAt
+}
+
+model SparePart {
+  id               String            @id @default(cuid())
+  name             String            // اسم القطعة
+  code             String            @unique // كود القطعة
+  compatibleModels String            // الموديلات المتوافقة
+  quantity         Int               @default(0) // الكمية المتوفرة
+  minQuantity      Int               @default(5) // الحد الأدنى للطلب
+  price            Float?            // السعر (اختياري)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  transactions     PartTransaction[]
+}
+
+model PartTransaction {
+  id          String    @id @default(cuid())
+  partId      String
+  type        String    // "IN" (إدخال) أو "OUT" (صرف)
+  quantity    Int       // الكمية
+  recipient   String?   // المستلم (لصرف القطعة) أو المورد (للإدخال)
+  reference   String?   // رقم البلاغ أو أمر الصيانة المرتبط
+  notes       String?   // ملاحظات
+  date        DateTime  @default(now())
+  
+  part        SparePart @relation(fields: [partId], references: [id], onDelete: Cascade)
 }
