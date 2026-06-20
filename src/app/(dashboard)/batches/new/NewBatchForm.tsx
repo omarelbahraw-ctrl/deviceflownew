@@ -50,28 +50,52 @@ export default function NewBatchForm({
   const [devices, setDevices] = useState<DeviceEntry[]>([]);
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
 
-  // Barcode scanner simulation state
+  // Barcode scanner state
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
+  const scannerRef = useRef<any>(null);
 
-  const handleSimulateScanner = () => {
+  const handleOpenScanner = () => {
     setIsScannerOpen(true);
-    setIsScanning(true);
     setError("");
-
-    // Generate a random serial after 2 seconds
-    setTimeout(() => {
-      setIsScanning(false);
-      const randomDigits = Math.floor(100000 + Math.random() * 900000);
-      const randomSerial = `SN-2026-X${randomDigits}`;
-      setSerialNumber(randomSerial);
-      setTimeout(() => {
-        setIsScannerOpen(false);
-        // Focus the add button or input
-        setTimeout(() => serialInputRef.current?.focus(), 100);
-      }, 800);
-    }, 2000);
   };
+
+  useEffect(() => {
+    if (isScannerOpen) {
+      import("html5-qrcode").then(({ Html5QrcodeScanner }) => {
+        setTimeout(() => {
+          if (!document.getElementById("reader")) return;
+          scannerRef.current = new Html5QrcodeScanner(
+            "reader",
+            { fps: 10, qrbox: { width: 250, height: 100 } },
+            false
+          );
+          scannerRef.current.render(
+            (decodedText: string) => {
+              setSerialNumber(decodedText);
+              if (scannerRef.current) {
+                scannerRef.current.clear().catch(() => {});
+                scannerRef.current = null;
+              }
+              setIsScannerOpen(false);
+              setTimeout(() => serialInputRef.current?.focus(), 100);
+            },
+            (error: any) => {}
+          );
+        }, 100);
+      }).catch(err => console.error("Scanner load err", err));
+    } else {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(() => {});
+        scannerRef.current = null;
+      }
+    }
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(() => {});
+        scannerRef.current = null;
+      }
+    };
+  }, [isScannerOpen]);
 
   const [deviceTypes, setDeviceTypes] = useState<string[]>(DEFAULT_SETTINGS.DEVICE_TYPES);
   const [knownBrands, setKnownBrands] = useState<string[]>(DEFAULT_SETTINGS.KNOWN_BRANDS);
@@ -383,10 +407,10 @@ export default function NewBatchForm({
                   </label>
                   <button
                     type="button"
-                    onClick={handleSimulateScanner}
+                    onClick={handleOpenScanner}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-all shadow-sm"
                   >
-                    <Scan className="h-3.5 w-3.5" /> {t("new_batch_scanner_sim")}
+                    <Scan className="h-3.5 w-3.5" /> {isRtl ? "مسح الباركود" : "Scan Barcode"}
                   </button>
                 </div>
                 <input
@@ -728,75 +752,31 @@ export default function NewBatchForm({
         </div>
       )}
 
-      {/* Scanner Simulation Modal */}
+      {/* Real Barcode Scanner Modal */}
       {isScannerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
-          <div className="bg-slate-900 text-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-700">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-800/50">
-              <h3 className="font-bold text-slate-200 flex items-center gap-2">
-                <Camera className="h-5 w-5 text-indigo-400" />
-                {t("new_batch_scanner_modal_title")}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                <Camera className="h-5 w-5 text-indigo-600" />
+                {isRtl ? "مسح الباركود بالكاميرا" : "Scan Barcode"}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsScannerOpen(false)}
-                className="text-slate-400 hover:text-slate-200 p-1"
-                disabled={isScanning}
+                className="text-gray-400 hover:text-red-500 p-1 transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="h-6 w-6" />
               </button>
             </div>
             
-            <div className="p-8 flex flex-col items-center justify-center space-y-6">
-              {/* Viewfinder area */}
-              <div className="relative w-64 h-48 border-4 border-slate-500 rounded-xl bg-slate-950 overflow-hidden flex items-center justify-center shadow-inner">
-                {/* Viewfinder corners */}
-                <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-indigo-500"></div>
-                <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-indigo-500"></div>
-                <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-indigo-500"></div>
-                <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-indigo-500"></div>
-                
-                {/* Barcode representation */}
-                <div className="flex gap-1.5 opacity-40">
-                  <div className="w-1.5 h-24 bg-white"></div>
-                  <div className="w-3 h-24 bg-white"></div>
-                  <div className="w-1 h-24 bg-white"></div>
-                  <div className="w-4 h-24 bg-white"></div>
-                  <div className="w-2.5 h-24 bg-white"></div>
-                  <div className="w-1.5 h-24 bg-white"></div>
-                  <div className="w-3 h-24 bg-white"></div>
-                  <div className="w-2 h-24 bg-white"></div>
-                </div>
-                
-                {/* Laser animation */}
-                {isScanning && (
-                  <div className="absolute left-0 w-full h-1 bg-red-500 shadow-[0_0_10px_#ef4444] animate-pulse" style={{ transform: 'translateY(24px)' }}></div>
-                )}
-                
-                {!isScanning && (
-                  <div className="absolute inset-0 bg-green-500/10 flex items-center justify-center text-green-400 font-bold text-sm">
-                    {isRtl ? "✓ تم قراءة الكود بنجاح" : "✓ Code read successfully"}
-                  </div>
-                )}
-              </div>
-              
-              {/* Status and spinner */}
-              <div className="text-center">
-                {isScanning ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <Loader2 className="h-5 w-5 text-indigo-400 animate-spin" />
-                    <span className="font-bold text-slate-300">{t("new_batch_scanner_scanning")}</span>
-                  </div>
-                ) : (
-                  <div className="text-green-400 font-bold text-lg flex items-center justify-center gap-2">
-                    <Check className="h-6 w-6 stroke-[3]" />
-                    <span>{t("new_batch_scanner_success")}</span>
-                  </div>
-                )}
-                <p className="text-xs text-slate-500 mt-2">
-                  {t("new_batch_scanner_info")}
-                </p>
-              </div>
+            <div className="p-4 bg-black">
+              {/* html5-qrcode will render the video stream here */}
+              <div id="reader" className="w-full min-h-[300px] overflow-hidden rounded-lg bg-black text-white"></div>
+            </div>
+            
+            <div className="p-4 bg-gray-50 text-center text-sm text-gray-600 font-bold">
+              {isRtl ? "قم بتوجيه الكاميرا نحو باركود الجهاز (السيريال)" : "Point camera at the device barcode (serial)"}
             </div>
           </div>
         </div>
