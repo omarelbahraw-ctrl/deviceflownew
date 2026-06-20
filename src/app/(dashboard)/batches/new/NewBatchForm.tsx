@@ -209,13 +209,19 @@ export default function NewBatchForm({
       ? traders.find((t) => t.id === selectedTraderId)?.name || ""
       : selectedTraderId;
 
-    const res = await createBatchWithDevices(finalTraderId, devices, reportNumber, representative);
-    if (res?.error) {
-      setError(res.error);
+    try {
+      const res = await createBatchWithDevices(finalTraderId, devices, reportNumber, representative);
+      if (res?.error) {
+        setError(res.error);
+        setIsSaving(false);
+      } else {
+        router.push("/batches");
+        router.refresh();
+      }
+    } catch (err: any) {
+      console.error("Save error:", err);
+      setError(isRtl ? "حدث خطأ أثناء الحفظ. قد يكون حجم الصور كبيراً جداً، يرجى المحاولة مرة أخرى أو تقليل عدد الصور." : "Error saving. Images might be too large. Try reducing image size or quantity.");
       setIsSaving(false);
-    } else {
-      router.push("/batches");
-      router.refresh();
     }
   };
 
