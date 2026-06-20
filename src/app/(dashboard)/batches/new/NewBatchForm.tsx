@@ -51,69 +51,34 @@ export default function NewBatchForm({
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
 
   // Barcode scanner state
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const scannerRef = useRef<any>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false); // Used as loading state now
+  const barcodeFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenScanner = () => {
-    setIsScannerOpen(true);
-    setError("");
+    barcodeFileInputRef.current?.click();
   };
 
-  useEffect(() => {
-    if (isScannerOpen) {
-      import("html5-qrcode").then(({ Html5QrcodeScanner }) => {
-        setTimeout(() => {
-          if (!document.getElementById("reader")) return;
-          scannerRef.current = new Html5QrcodeScanner(
-            "reader",
-            { fps: 10, qrbox: { width: 250, height: 100 } },
-            false
-          );
-          scannerRef.current.render(
-            (decodedText: any) => {
-              // Safely extract text in case the library passes an event or object
-              let finalStr = "";
-              if (typeof decodedText === "string") {
-                finalStr = decodedText;
-              } else if (decodedText && typeof decodedText === "object") {
-                if (decodedText.target && decodedText.target.value) {
-                  finalStr = decodedText.target.value;
-                } else {
-                  finalStr = decodedText.text || decodedText.data || JSON.stringify(decodedText);
-                }
-              } else {
-                finalStr = String(decodedText);
-              }
-              
-              if (finalStr === "[object Event]") {
-                return; // Ignore bogus event objects
-              }
+  const handleBarcodeImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-              setSerialNumber(finalStr);
-              if (scannerRef.current) {
-                scannerRef.current.clear().catch(() => {});
-                scannerRef.current = null;
-              }
-              setIsScannerOpen(false);
-              setTimeout(() => serialInputRef.current?.focus(), 100);
-            },
-            (error: any) => {}
-          );
-        }, 100);
-      }).catch(err => console.error("Scanner load err", err));
-    } else {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
-        scannerRef.current = null;
-      }
+    setIsScannerOpen(true); // Show loading spinner
+    try {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      // html5-qrcode requires a DOM element to attach to, even for file scanning
+      const html5QrCode = new Html5Qrcode("barcode-reader-hidden");
+      const decodedText = await html5QrCode.scanFile(file, true);
+      
+      setSerialNumber(decodedText);
+      setTimeout(() => serialInputRef.current?.focus(), 100);
+    } catch (err) {
+      console.error(err);
+      alert(isRtl ? "لم يتم العثور على باركود واضح في الصورة، جرب تصورها أقرب أو أوضح." : "No barcode found in image. Try again.");
+    } finally {
+      setIsScannerOpen(false);
+      if (barcodeFileInputRef.current) barcodeFileInputRef.current.value = "";
     }
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
-        scannerRef.current = null;
-      }
-    };
-  }, [isScannerOpen]);
+  };
 
   const [deviceTypes, setDeviceTypes] = useState<string[]>(DEFAULT_SETTINGS.DEVICE_TYPES);
   const [knownBrands, setKnownBrands] = useState<string[]>(DEFAULT_SETTINGS.KNOWN_BRANDS);
@@ -428,8 +393,16 @@ export default function NewBatchForm({
                     onClick={handleOpenScanner}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-all shadow-sm"
                   >
-                    <Scan className="h-3.5 w-3.5" /> {isRtl ? "مسح الباركود" : "Scan Barcode"}
+                    <Scan className="h-3.5 w-3.5" /> {isRtl ? "تصوير الباركود" : "Capture Barcode"}
                   </button>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment" 
+                    ref={barcodeFileInputRef} 
+                    onChange={handleBarcodeImageUpload} 
+                    className="hidden" 
+                  />
                 </div>
                 <input
                   ref={serialInputRef}
@@ -770,32 +743,18 @@ export default function NewBatchForm({
         </div>
       )}
 
-      {/* Real Barcode Scanner Modal */}
+      {/* Real Barcode Scanner Modal (Loading State) */}
+      <div id="barcode-reader-hidden" style={{ display: "none" }}></div>
       {isScannerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <Camera className="h-5 w-5 text-indigo-600" />
-                {isRtl ? "مسح الباركود بالكاميرا" : "Scan Barcode"}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsScannerOpen(false)}
-                className="text-gray-400 hover:text-red-500 p-1 transition-colors"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <div className="p-4 bg-black">
-              {/* html5-qrcode will render the video stream here */}
-              <div id="reader" className="w-full min-h-[300px] overflow-hidden rounded-lg bg-black text-white"></div>
-            </div>
-            
-            <div className="p-4 bg-gray-50 text-center text-sm text-gray-600 font-bold">
-              {isRtl ? "قم بتوجيه الكاميرا نحو باركود الجهاز (السيريال)" : "Point camera at the device barcode (serial)"}
-            </div>
+          <div className="bg-white rounded-2xl p-8 max-w-sm shadow-2xl flex flex-col items-center justify-center text-center">
+            <Loader2 className="h-12 w-12 text-indigo-600 animate-spin mb-4" />
+            <h3 className="font-bold text-gray-900 text-lg mb-2">
+              {isRtl ? "جاري تحليل الباركود..." : "Analyzing barcode..."}
+            </h3>
+            <p className="text-gray-500 text-sm">
+              {isRtl ? "لحظات وبيتم قراءة الرقم من الصورة" : "Extracting number from image"}
+            </p>
           </div>
         </div>
       )}
