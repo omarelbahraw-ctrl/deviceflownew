@@ -231,6 +231,15 @@ export default function NewBatchForm({
     setIsSaving(true);
     setError("");
 
+    // Estimate payload size (Vercel has 4.5MB limit, Next has 10MB config, let's limit to 3.5MB to be extremely safe)
+    const payloadStr = JSON.stringify(devices);
+    // JS string length * 2 bytes = approx size in bytes. Base64 is ascii so 1 char = 1 byte in payload.
+    if (payloadStr.length > 3.5 * 1024 * 1024) {
+      setError(isRtl ? "حجم الصور في هذه الدفعة ضخم جداً. يرجى تقسيم الأجهزة على دفعتين أو تقليل حجم الصور." : "Total image size is too large. Please split this batch into two or reduce image sizes.");
+      setIsSaving(false);
+      return;
+    }
+
     const finalTraderId = selectedTraderId.startsWith("temp-")
       ? traders.find((t) => t.id === selectedTraderId)?.name || ""
       : selectedTraderId;
