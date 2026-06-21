@@ -65,71 +65,74 @@ export async function createBatchWithDevices(
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
-      // Create the batch with reportNumber and representative
-      const batch = await tx.batch.create({
-        data: {
-          traderId,
-          status: "CLOSED",
-          closedAt: new Date(),
-          reportNumber: reportNumber || null,
-          representative: representative || null,
-        },
-      });
+    const isDiscountWarehouseTrigger = (decision: string) =>
+      decision === "ACCEPT" ||
+      decision === "RETURNED_COMPLIANT" ||
+      decision === "NON_COMPLIANT_RECEIVED_WITH_OVERRIDE";
 
-      // Create all devices
-      for (const device of devices) {
-        const decision = (device.inspectionResult === "MATCH" ? "ACCEPT" : "PENDING") as any;
-        const createdDevice = await tx.device.create({
-          data: {
-            batchId: batch.id,
-            traderId,
-            brand: device.brand,
-            type: device.deviceType,
-            model: device.model,
-            serialNumber: device.serialNumber,
-            condition: "USED",
-            cartonStatus: "NONE",
-            accessoriesStatus: device.accessoriesStatus || "كامل ملحقاته",
-            inspectionResult: device.inspectionResult as any,
-            faultType: device.faultType || null,
-            notes: device.notes || null,
-            imageBase64: device.imageBase64 || null,
-            decision,
-            discountCategory: (device.discountCategory as any) || "B",
-            inspectorName: sessionName,
-            inspectionDate: new Date(),
-          },
-        });
-
-        // Sync to Discount Warehouse if status is ACCEPT, RETURNED_COMPLIANT, or NON_COMPLIANT_RECEIVED_WITH_OVERRIDE
-        const isDiscountWarehouseTrigger = 
-          decision === "ACCEPT" || 
-          decision === "RETURNED_COMPLIANT" || 
-          decision === "NON_COMPLIANT_RECEIVED_WITH_OVERRIDE";
-
-        if (isDiscountWarehouseTrigger) {
-          await tx.discountWarehouse.create({
-            data: {
-              deviceId: createdDevice.id,
-              brand: createdDevice.brand,
-              model: createdDevice.model,
-              type: createdDevice.type,
-              serialNumber: createdDevice.serialNumber,
-              category: createdDevice.discountCategory,
-              workingStatus: "WORKING", // Default status WORKING
-              previousIssue: createdDevice.notes || "تحويل تلقائي من فحص أجهزة المرتجعات",
-              readyForSale: true,
-            }
-          });
-        }
-      }
-
-      return batch;
+    // Build devices data array for nested create
+    const devicesData = devices.map(device => {
+      const decision = (device.inspectionResult === "MATCH" ? "ACCEPT" : "PENDING") as any;
+      return {
+        traderId,
+        brand: device.brand,
+        type: device.deviceType,
+        model: device.model,
+        serialNumber: device.serialNumber,
+        condition: "USED",
+        cartonStatus: "NONE",
+        accessoriesStatus: device.accessoriesStatus || "كامل ملحقاته",
+        inspectionResult: device.inspectionResult as any,
+        faultType: device.faultType || null,
+        notes: device.notes || null,
+        imageBase64: device.imageBase64 || null,
+        decision,
+        discountCategory: (device.discountCategory as any) || "B",
+        inspectorName: sessionName,
+        inspectionDate: new Date(),
+      };
     });
 
+    // Single nested write transaction
+    const batch = await prisma.batch.create({
+      data: {
+        traderId,
+        status: "CLOSED",
+        closedAt: new Date(),
+        reportNumber: reportNumber || null,
+        representative: representative || null,
+        devices: {
+          create: devicesData
+        }
+      },
+      include: {
+        devices: true
+      }
+    });
+
+    // Create discount warehouse records separately
+    const discountItems = batch.devices
+      .filter(d => isDiscountWarehouseTrigger(d.decision))
+      .map(d => ({
+        deviceId: d.id,
+        brand: d.brand,
+        model: d.model,
+        type: d.type,
+        serialNumber: d.serialNumber,
+        category: d.discountCategory,
+        workingStatus: "WORKING",
+        previousIssue: d.notes || "تحويل تلقائي من فحص أجهزة المرتجعات",
+        readyForSale: true,
+      }));
+
+    if (discountItems.length > 0) {
+      await prisma.discountWarehouse.createMany({
+        data: discountItems as any
+      });
+    }
+
     revalidatePath("/batches");
-    return { success: true, batchId: result.id };
+    return { success: true, batchId: batch.id };
   } catch (error: any) {
     console.error("Error creating batch with devices:", error);
     if (error?.code === "P2002") {
