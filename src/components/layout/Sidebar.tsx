@@ -53,7 +53,10 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col bg-slate-900 text-white shadow-xl">
-      <div className="flex h-16 shrink-0 items-center justify-between px-4 bg-slate-950">
+      <div 
+        className="flex h-16 shrink-0 items-center justify-between px-4 bg-slate-950 box-content"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="flex items-center min-w-0">
           <Package className={clsx("h-7 w-7 text-indigo-500 flex-shrink-0", isRtl ? "ml-2" : "mr-2")} />
           <span className="text-md font-bold tracking-tight text-white truncate">{t("brand_name")}</span>
@@ -104,7 +107,10 @@ export function Sidebar() {
           })}
         </nav>
       </div>
-      <div className="border-t border-slate-800 p-4">
+      <div 
+        className="border-t border-slate-800 p-4 box-content"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
         <div className="flex items-center">
           <div>
             <p className="text-sm font-medium text-white">{t("brand_name")}</p>

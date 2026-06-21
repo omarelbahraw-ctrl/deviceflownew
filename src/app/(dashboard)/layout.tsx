@@ -55,7 +55,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
       <div className={clsx("flex flex-1 flex-col h-full overflow-hidden transition-all duration-300 lg:pl-64", isRtl ? "lg:pr-64 lg:pl-0" : "lg:pl-64")}>
         <Header />
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
+        <main 
+          className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8"
+          style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+        >
           {children}
         </main>
       </div>
