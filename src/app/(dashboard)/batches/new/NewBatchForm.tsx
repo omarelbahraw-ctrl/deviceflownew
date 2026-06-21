@@ -177,9 +177,12 @@ export default function NewBatchForm({
       const newUrls: string[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const blob = await upload(file.name, file, {
+        // Ensure a valid filename, fallback to timestamp if missing.
+        const safeName = file.name ? file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_') : `media-${Date.now()}`;
+        const blob = await upload(safeName, file, {
           access: 'public',
           handleUploadUrl: '/api/upload',
+          multipart: true, // Required for files > 4.5MB like iPhone photos
         });
         newUrls.push(blob.url);
       }
