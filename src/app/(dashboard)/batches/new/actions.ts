@@ -16,6 +16,7 @@ export type DeviceEntry = {
   accessoriesStatus: string;
   notes: string;
   imageBase64: string | null;
+  mediaUrls?: string[];
   discountCategory?: string;
 };
 
@@ -86,6 +87,7 @@ export async function createBatchWithDevices(
         faultType: device.faultType || null,
         notes: device.notes || null,
         imageBase64: device.imageBase64 || null,
+        mediaUrls: device.mediaUrls || [],
         decision,
         discountCategory: (device.discountCategory as any) || "B",
         inspectorName: sessionName,

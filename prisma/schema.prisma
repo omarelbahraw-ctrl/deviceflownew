@@ -132,6 +132,7 @@ model Device {
   notes            String?          // التقرير الفني والملاحظات
   discountCategory DiscountCategory @default(B)
   imageBase64      String?          // صورة حالة الجهاز (Base64)
+  mediaUrls        String[]         @default([]) // روابط الصور والفيديوهات من Vercel Blob
 
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt

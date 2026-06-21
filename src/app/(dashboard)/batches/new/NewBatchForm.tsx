@@ -17,7 +17,9 @@ import {
   Save,
   Loader2,
   Scan,
+  Video,
 } from "lucide-react";
+import { upload } from "@vercel/blob/client";
 import { createTrader } from "@/app/(dashboard)/traders/actions";
 import { createBatchWithDevices, DeviceEntry } from "./actions";
 import { getSystemSettings } from "@/app/(dashboard)/settings/actions";
@@ -64,16 +66,64 @@ export default function NewBatchForm({
 
     setIsScannerOpen(true); // Show loading spinner
     try {
-      const { Html5Qrcode } = await import("html5-qrcode");
-      // html5-qrcode requires a DOM element to attach to, even for file scanning
-      const html5QrCode = new Html5Qrcode("barcode-reader-hidden");
-      const decodedText = await html5QrCode.scanFile(file, true);
+      const { BrowserMultiFormatReader } = await import("@zxing/browser");
+      const reader = new BrowserMultiFormatReader();
       
-      setSerialNumber(decodedText);
-      setTimeout(() => serialInputRef.current?.focus(), 100);
+      const imageUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = imageUrl;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      let decodedText = "";
+
+      // Try 1: Direct scan of the original image
+      try {
+        const result = await reader.decodeFromImageElement(img);
+        decodedText = result.getText();
+      } catch (err) {
+        console.log("Direct scan failed, trying resized canvas fallback...", err);
+        // Try 2: Resize image to help ZXing find small/large barcodes
+        const canvas = document.createElement("canvas");
+        const MAX_DIM = 1000;
+        let width = img.width;
+        let height = img.height;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height *= MAX_DIM / width;
+            width = MAX_DIM;
+          } else {
+            width *= MAX_DIM / height;
+            height = MAX_DIM;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const scaledImg = new Image();
+          scaledImg.src = canvas.toDataURL("image/jpeg", 0.9);
+          await new Promise((resolve) => { scaledImg.onload = resolve; });
+          const result2 = await reader.decodeFromImageElement(scaledImg);
+          decodedText = result2.getText();
+        } else {
+          throw new Error("Canvas context failed");
+        }
+      }
+      
+      if (decodedText) {
+        setSerialNumber(decodedText);
+        setTimeout(() => serialInputRef.current?.focus(), 100);
+      } else {
+        throw new Error("Barcode not found");
+      }
+      URL.revokeObjectURL(imageUrl);
     } catch (err) {
       console.error(err);
-      alert(isRtl ? "لم يتم العثور على باركود واضح في الصورة، جرب تصورها أقرب أو أوضح." : "No barcode found in image. Try again.");
+      alert(isRtl ? "لم يتم العثور على باركود واضح في الصورة، جرب تصورها أقرب أو بشكل أوضح، أو تأكد من إضاءة المكان." : "No barcode found in image. Try getting closer, focusing better, or improving lighting.");
     } finally {
       setIsScannerOpen(false);
       if (barcodeFileInputRef.current) barcodeFileInputRef.current.value = "";
@@ -94,9 +144,10 @@ export default function NewBatchForm({
   const [accessoriesStatus, setAccessoriesStatus] = useState("كامل ملحقاته والكرتون سليم");
   const [notes, setNotes] = useState("");
   const [discountCategory, setDiscountCategory] = useState("B");
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const serialInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -115,47 +166,31 @@ export default function NewBatchForm({
   }, []);
 
 
-  // Handle image upload with compression
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Handle multiple media upload to Vercel Blob
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     
-    // Read the file and compress it
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        // Compress to JPEG with 0.6 quality (approx 50-150KB)
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
-        setImageBase64(compressedBase64);
-        setImagePreview(compressedBase64);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+    setIsUploadingMedia(true);
+    try {
+      const newUrls: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const blob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+        });
+        newUrls.push(blob.url);
+      }
+      setMediaUrls((prev) => [...prev, ...newUrls]);
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(isRtl ? "حدث خطأ أثناء رفع الملفات. قد يكون الملف كبيراً جداً أو غير مدعوم. يرجى المحاولة مرة أخرى." : "Error uploading files. The file might be too large or unsupported. Please try again.");
+    } finally {
+      setIsUploadingMedia(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (videoInputRef.current) videoInputRef.current.value = "";
+    }
   };
 
   // Add device to local list
@@ -189,7 +224,8 @@ export default function NewBatchForm({
       faultType,
       accessoriesStatus,
       notes: notes.trim(),
-      imageBase64,
+      imageBase64: null,
+      mediaUrls,
       discountCategory,
     };
 
@@ -201,8 +237,7 @@ export default function NewBatchForm({
     setModel("");
     setSerialNumber("");
     setNotes("");
-    setImageBase64(null);
-    setImagePreview(null);
+    setMediaUrls([]);
     setInspectionResult("MATCH");
     setFaultType(faultTypesList[0] || "");
     setDiscountCategory("B");
@@ -231,14 +266,8 @@ export default function NewBatchForm({
     setIsSaving(true);
     setError("");
 
-    // Estimate payload size (Vercel has 4.5MB limit, Next has 10MB config, let's limit to 3.5MB to be extremely safe)
-    const payloadStr = JSON.stringify(devices);
-    // JS string length * 2 bytes = approx size in bytes. Base64 is ascii so 1 char = 1 byte in payload.
-    if (payloadStr.length > 3.5 * 1024 * 1024) {
-      setError(isRtl ? "حجم الصور في هذه الدفعة ضخم جداً. يرجى تقسيم الأجهزة على دفعتين أو تقليل حجم الصور." : "Total image size is too large. Please split this batch into two or reduce image sizes.");
-      setIsSaving(false);
-      return;
-    }
+    setIsSaving(true);
+    setError("");
 
     const finalTraderId = selectedTraderId.startsWith("temp-")
       ? traders.find((t) => t.id === selectedTraderId)?.name || ""
@@ -525,49 +554,77 @@ export default function NewBatchForm({
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
-                    <Camera className={clsx("h-4 w-4 inline", isRtl ? "ml-1" : "mr-1")} /> {t("new_batch_image")}
+                    <Camera className={clsx("h-4 w-4 inline", isRtl ? "ml-1" : "mr-1")} /> {isRtl ? "صور وفيديو" : "Images & Video"}
                   </label>
-                  <div
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-colors min-h-[100px] flex flex-col items-center justify-center"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {imagePreview ? (
-                      <div className="relative">
-                        <img
-                          src={imagePreview}
-                          alt="معاينة"
-                          className="max-h-20 rounded-lg object-cover"
-                        />
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {mediaUrls.map((url, idx) => (
+                      <div key={idx} className="relative group">
+                        {url.match(/\.(mp4|webm|mov|quicktime)$/i) || url.includes('video') ? (
+                          <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg bg-gray-100 border border-gray-200 flex flex-col items-center justify-center">
+                            <Video className="h-6 w-6 text-indigo-500 mb-1" />
+                            <span className="text-[10px] text-gray-500 font-bold">Video</span>
+                          </div>
+                        ) : (
+                          <img
+                            src={url}
+                            alt={`Media ${idx}`}
+                            className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover border border-gray-200"
+                          />
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setImageBase64(null);
-                            setImagePreview(null);
-                            if (fileInputRef.current) fileInputRef.current.value = "";
+                            setMediaUrls(mediaUrls.filter((_, i) => i !== idx));
                           }}
-                          className="absolute top-2 left-2 bg-red-500 text-white rounded-full p-0.5"
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="h-3 w-3" />
                         </button>
-                        <p className="text-xs text-green-600 mt-1 font-bold">{isRtl ? "✓ تم رفع الصورة" : "✓ Image uploaded"}</p>
                       </div>
-                    ) : (
-                      <>
-                        <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500">{t("new_batch_click_upload")}</p>
-                        <p className="text-xs text-gray-400">{t("new_batch_max_size")}</p>
-                      </>
-                    )}
+                    ))}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={isUploadingMedia}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+                      >
+                        {isUploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                        {isRtl ? "مكتبة / صور" : "Gallery / Photos"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isUploadingMedia}
+                        onClick={() => videoInputRef.current?.click()}
+                        className="flex-1 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+                      >
+                        {isUploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
+                        {isRtl ? "تصوير فيديو" : "Record Video"}
+                      </button>
+                    </div>
                   </div>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleMediaUpload}
+                    disabled={isUploadingMedia}
+                  />
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*"
                     capture="environment"
                     className="hidden"
-                    onChange={handleImageUpload}
+                    onChange={handleMediaUpload}
+                    disabled={isUploadingMedia}
                   />
+                  <p className="text-xs text-gray-400 mt-2">
+                    {isRtl ? "يمكنك رفع صور متعددة ومقاطع فيديو (بحد أقصى 50 ميجا)" : "You can upload multiple images and videos (max 50MB)"}
+                  </p>
                 </div>
               </div>
 
@@ -605,12 +662,18 @@ export default function NewBatchForm({
                       </div>
 
                       {/* Image thumbnail */}
-                      {device.imageBase64 && (
-                        <img
-                          src={device.imageBase64}
-                          alt="صورة الجهاز"
-                          className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover border border-gray-200 flex-shrink-0 mt-1 sm:mt-0"
-                        />
+                      {device.mediaUrls && device.mediaUrls.length > 0 && (
+                        device.mediaUrls[0].match(/\.(mp4|webm|mov|quicktime)$/i) || device.mediaUrls[0].includes('video') ? (
+                          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-gray-100 border border-gray-200 flex flex-col items-center justify-center flex-shrink-0 mt-1 sm:mt-0">
+                            <Video className="h-5 w-5 text-indigo-500" />
+                          </div>
+                        ) : (
+                          <img
+                            src={device.mediaUrls[0]}
+                            alt="Media"
+                            className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover border border-gray-200 flex-shrink-0 mt-1 sm:mt-0"
+                          />
+                        )
                       )}
 
                       {/* Device info */}
@@ -695,14 +758,20 @@ export default function NewBatchForm({
                           </span>
                         </div>
                       </div>
-                      {device.imageBase64 && (
+                      {device.mediaUrls && device.mediaUrls.length > 0 && (
                         <div className="mt-3">
-                          <span className="block text-xs text-gray-500 mb-1">{t("new_batch_image")}</span>
-                          <img
-                            src={device.imageBase64}
-                            alt="صورة الجهاز"
-                            className="max-h-48 rounded-lg object-cover border border-gray-200"
-                          />
+                          <span className="block text-xs text-gray-500 mb-1">{isRtl ? "الوسائط" : "Media"}</span>
+                          <div className="flex flex-wrap gap-2">
+                            {device.mediaUrls.map((url, i) => (
+                              <div key={i}>
+                                {url.match(/\.(mp4|webm|mov|quicktime)$/i) || url.includes('video') ? (
+                                  <video src={url} controls className="max-h-48 rounded-lg object-cover border border-gray-200 max-w-xs" />
+                                ) : (
+                                  <img src={url} alt={`Media ${i}`} className="max-h-48 rounded-lg object-cover border border-gray-200" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
