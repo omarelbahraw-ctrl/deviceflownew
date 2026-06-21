@@ -238,13 +238,23 @@ export default async function BatchDetailsPage({
                     {index + 1}
                   </div>
 
-                  {/* Device Image */}
-                  {device.imageBase64 && (
-                    <img
-                      src={device.imageBase64}
-                      alt={`صورة ${device.brand} ${device.model}`}
-                      className="h-24 w-24 rounded-xl object-cover border-2 border-gray-200 flex-shrink-0"
-                    />
+                  {/* Device Media */}
+                  {device.mediaUrls && device.mediaUrls.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {device.mediaUrls.map((url: string, imgIdx: number) => (
+                        url.match(/\.(mp4|webm|mov|x-m4v)$/i) ? (
+                          <video key={imgIdx} src={url} controls className="h-24 w-24 rounded-xl object-cover border-2 border-gray-200 flex-shrink-0" />
+                        ) : (
+                          <a key={imgIdx} href={url} target="_blank" rel="noreferrer">
+                            <img
+                              src={url}
+                              alt={`صورة ${device.brand} ${device.model}`}
+                              className="h-24 w-24 rounded-xl object-cover border-2 border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                            />
+                          </a>
+                        )
+                      ))}
+                    </div>
                   )}
 
                   {/* Device Details */}
@@ -412,12 +422,21 @@ export default async function BatchDetailsPage({
                   </td>
                   <td className="border border-black px-2 py-1.5">{device.inspectorName || "غير محدد"}</td>
                   <td className="border border-black px-2 py-1.5 text-center">
-                    {device.imageBase64 ? (
-                      <img
-                        src={device.imageBase64}
-                        alt="صورة حالة الجهاز"
-                        className="max-h-12 max-w-16 rounded object-cover mx-auto"
-                      />
+                    {device.mediaUrls && device.mediaUrls.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {device.mediaUrls.slice(0, 2).map((url: string, mIdx: number) => (
+                           url.match(/\.(mp4|webm|mov|x-m4v)$/i) ? (
+                             <span key={mIdx} className="text-[10px] bg-gray-200 px-1 rounded">فيديو</span>
+                           ) : (
+                             <img
+                               key={mIdx}
+                               src={url}
+                               alt="صورة حالة الجهاز"
+                               className="max-h-12 max-w-16 rounded object-cover mx-auto"
+                             />
+                           )
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-gray-400">لا يوجد صورة</span>
                     )}

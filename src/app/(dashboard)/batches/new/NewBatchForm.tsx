@@ -565,11 +565,13 @@ export default function NewBatchForm({
                             <span className="text-[10px] text-gray-500 font-bold">Video</span>
                           </div>
                         ) : (
-                          <img
-                            src={url}
-                            alt={`Media ${idx}`}
-                            className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover border border-gray-200"
-                          />
+                          <a href={url} target="_blank" rel="noreferrer">
+                            <img
+                              src={url}
+                              alt={`Media ${idx}`}
+                              className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80"
+                            />
+                          </a>
                         )}
                         <button
                           type="button"
@@ -665,14 +667,16 @@ export default function NewBatchForm({
                       {device.mediaUrls && device.mediaUrls.length > 0 && (
                         device.mediaUrls[0].match(/\.(mp4|webm|mov|quicktime)$/i) || device.mediaUrls[0].includes('video') ? (
                           <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-gray-100 border border-gray-200 flex flex-col items-center justify-center flex-shrink-0 mt-1 sm:mt-0">
-                            <Video className="h-5 w-5 text-indigo-500" />
+                            <video src={device.mediaUrls[0]} controls className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover" />
                           </div>
                         ) : (
-                          <img
-                            src={device.mediaUrls[0]}
-                            alt="Media"
-                            className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover border border-gray-200 flex-shrink-0 mt-1 sm:mt-0"
-                          />
+                          <a href={device.mediaUrls[0]} target="_blank" rel="noreferrer">
+                            <img
+                              src={device.mediaUrls[0]}
+                              alt="معاينة"
+                              className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                            />
+                          </a>
                         )
                       )}
 
