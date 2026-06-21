@@ -29,10 +29,12 @@ const navigation = [
 ];
 
 import { useState, useEffect } from "react";
+import { useLayoutState } from "./LayoutContext";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { locale, setLocale, t, isRtl } = useTranslation();
+  const { setIsSidebarOpen } = useLayoutState();
   const [role, setRole] = useState("ADMIN");
   const [userName, setUserName] = useState("admin@capitalofglory.com");
 
@@ -80,6 +82,7 @@ export function Sidebar() {
               <Link
                 key={item.nameKey}
                 href={item.href}
+                onClick={() => setIsSidebarOpen(false)}
                 className={clsx(
                   isActive
                     ? "bg-indigo-600 text-white shadow-md"
