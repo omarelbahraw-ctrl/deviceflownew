@@ -74,7 +74,7 @@ export async function createBatchWithDevices(
     const devicesData = devices.map(device => {
       const decision = (device.inspectionResult === "MATCH" ? "ACCEPT" : "PENDING") as any;
       return {
-        traderId,
+        trader: { connect: { id: traderId } },
         brand: device.brand,
         type: device.deviceType,
         model: device.model,
@@ -102,7 +102,7 @@ export async function createBatchWithDevices(
         reportNumber: reportNumber || null,
         representative: representative || null,
         devices: {
-          create: devicesData
+          create: devicesData as any
         }
       },
       include: {
