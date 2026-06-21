@@ -27,10 +27,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         isSidebarOpen 
           ? "translate-x-0" 
           : isRtl ? "translate-x-full" : "-translate-x-full",
-        isRtl ? "right-0" : "left-0"
+        isRtl ? "right-0" : "left-0",
+        !isSidebarOpen && "pointer-events-none"
       )}>
         <div className="relative flex w-full flex-1 flex-col">
-          <div className={clsx("absolute top-0 flex w-16 justify-center pt-5", isRtl ? "-left-16" : "-right-16")}>
+          <div className={clsx("absolute top-0 flex w-16 justify-center pt-5 transition-opacity", 
+            isRtl ? "-left-16" : "-right-16",
+            !isSidebarOpen && "opacity-0"
+          )}>
             <button
               type="button"
               className="-m-2.5 p-2.5"
