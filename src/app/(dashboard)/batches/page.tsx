@@ -139,131 +139,221 @@ export default async function BatchesPage() {
             </Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className={`min-w-full ${isRtl ? "text-right" : "text-left"}`}>
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{isRtl ? "رقم الإذن / البلاغ" : "Receipt ID / Report #"}</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{t("batch_trader")}</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{t("batch_rep")}</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{isRtl ? "التاريخ والوقت" : "Date & Time"}</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_devices_count")}</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_status")}</th>
-                  <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_actions")}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {batches.map((batch) => (
-                  <tr key={batch.id} className="hover:bg-indigo-50/30 transition-colors">
-                    {/* رقم الإذن / البلاغ */}
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <Link
-                          href={`/batches/${batch.id}`}
-                          className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors w-max"
-                        >
-                          <FileText className="h-4 w-4" />
-                          {batch.id.substring(batch.id.length - 6).toUpperCase()}
-                        </Link>
-                        {batch.reportNumber && (
-                          <span className="text-xs text-amber-600 font-bold px-1">
-                            {isRtl ? "بلاغ:" : "Report:"} {batch.reportNumber}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* العميل */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                          <User className="h-4 w-4 text-gray-500" />
-                        </div>
-                        <span className="text-sm font-bold text-gray-800">{batch.trader.name}</span>
-                      </div>
-                    </td>
-
-                    {/* المندوب */}
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-700">{batch.representative || "—"}</span>
-                    </td>
-
-                    {/* التاريخ */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <div>
-                          <span className="block font-medium">
-                            {new Date(batch.date).toLocaleDateString(isRtl ? "ar-SA" : "en-US")}
-                          </span>
-                          <span className="block text-xs text-gray-400">
-                            {new Date(batch.createdAt).toLocaleTimeString(isRtl ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* عدد الأجهزة */}
-                    <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center justify-center h-9 min-w-[2.5rem] px-2 bg-blue-50 text-blue-700 font-bold text-sm rounded-lg border border-blue-100">
-                        {batch._count.devices}
-                      </span>
-                    </td>
-
-                    {/* الحالة */}
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
-                          batch.status === "CLOSED"
-                            ? "bg-green-100 text-green-700 border border-green-200"
-                            : batch.status === "IN_PROGRESS"
-                            ? "bg-amber-100 text-amber-700 border border-amber-200"
-                            : "bg-blue-100 text-blue-700 border border-blue-200"
-                        }`}
-                      >
-                        {batch.status === "CLOSED" ? (
-                          <><CheckCircle className="h-3.5 w-3.5" /> {isRtl ? "مكتمل" : "Closed"}</>
-                        ) : batch.status === "IN_PROGRESS" ? (
-                          <><Clock className="h-3.5 w-3.5" /> {t("dash_status_in_progress")}</>
-                        ) : (
-                          <><AlertCircle className="h-3.5 w-3.5" /> {t("dash_status_open")}</>
-                        )}
-                      </span>
-                    </td>
-
-                    {/* الإجراءات */}
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Link
-                          href={`/batches/${batch.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
-                          title={t("batch_btn_details")}
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span className="hidden sm:inline">{isRtl ? "تفاصيل" : "Details"}</span>
-                        </Link>
-                        <form
-                          action={async () => {
-                            "use server";
-                            await deleteBatch(batch.id);
-                          }}
-                        >
-                          <button
-                            type="submit"
-                            className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                            title={t("batch_btn_delete")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="hidden sm:inline">{isRtl ? "حذف" : "Delete"}</span>
-                          </button>
-                        </form>
-                      </div>
-                    </td>
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className={`min-w-full ${isRtl ? "text-right" : "text-left"}`}>
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{isRtl ? "رقم الإذن / البلاغ" : "Receipt ID / Report #"}</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{t("batch_trader")}</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{t("batch_rep")}</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase">{isRtl ? "التاريخ والوقت" : "Date & Time"}</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_devices_count")}</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_status")}</th>
+                    <th className="px-6 py-3 text-xs font-bold text-gray-500 uppercase text-center">{t("batch_actions")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {batches.map((batch) => (
+                    <tr key={batch.id} className="hover:bg-indigo-50/30 transition-colors">
+                      {/* رقم الإذن / البلاغ */}
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <Link
+                            href={`/batches/${batch.id}`}
+                            className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors w-max"
+                          >
+                            <FileText className="h-4 w-4" />
+                            {batch.id.substring(batch.id.length - 6).toUpperCase()}
+                          </Link>
+                          {batch.reportNumber && (
+                            <span className="text-xs text-amber-600 font-bold px-1">
+                              {isRtl ? "بلاغ:" : "Report:"} {batch.reportNumber}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* العميل */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <User className="h-4 w-4 text-gray-500" />
+                          </div>
+                          <span className="text-sm font-bold text-gray-800">{batch.trader.name}</span>
+                        </div>
+                      </td>
+
+                      {/* المندوب */}
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-medium text-gray-700">{batch.representative || "—"}</span>
+                      </td>
+
+                      {/* التاريخ */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          <div>
+                            <span className="block font-medium">
+                              {new Date(batch.date).toLocaleDateString(isRtl ? "ar-SA" : "en-US")}
+                            </span>
+                            <span className="block text-xs text-gray-400">
+                              {new Date(batch.createdAt).toLocaleTimeString(isRtl ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* عدد الأجهزة */}
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center justify-center h-9 min-w-[2.5rem] px-2 bg-blue-50 text-blue-700 font-bold text-sm rounded-lg border border-blue-100">
+                          {batch._count.devices}
+                        </span>
+                      </td>
+
+                      {/* الحالة */}
+                      <td className="px-6 py-4 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+                            batch.status === "CLOSED"
+                              ? "bg-green-100 text-green-700 border border-green-200"
+                              : batch.status === "IN_PROGRESS"
+                              ? "bg-amber-100 text-amber-700 border border-amber-200"
+                              : "bg-blue-100 text-blue-700 border border-blue-200"
+                          }`}
+                        >
+                          {batch.status === "CLOSED" ? (
+                            <><CheckCircle className="h-3.5 w-3.5" /> {isRtl ? "مكتمل" : "Closed"}</>
+                          ) : batch.status === "IN_PROGRESS" ? (
+                            <><Clock className="h-3.5 w-3.5" /> {t("dash_status_in_progress")}</>
+                          ) : (
+                            <><AlertCircle className="h-3.5 w-3.5" /> {t("dash_status_open")}</>
+                          )}
+                        </span>
+                      </td>
+
+                      {/* الإجراءات */}
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Link
+                            href={`/batches/${batch.id}`}
+                            className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                            title={t("batch_btn_details")}
+                          >
+                            <Eye className="h-4 w-4" />
+                            <span className="hidden sm:inline">{isRtl ? "تفاصيل" : "Details"}</span>
+                          </Link>
+                          <form
+                            action={async () => {
+                              "use server";
+                              await deleteBatch(batch.id);
+                            }}
+                          >
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                              title={t("batch_btn_delete")}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="hidden sm:inline">{isRtl ? "حذف" : "Delete"}</span>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {batches.map((batch) => (
+                <div key={batch.id} className="p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex flex-col gap-1">
+                      <Link
+                        href={`/batches/${batch.id}`}
+                        className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg w-max"
+                      >
+                        <FileText className="h-4 w-4" />
+                        #{batch.id.substring(batch.id.length - 6).toUpperCase()}
+                      </Link>
+                      {batch.reportNumber && (
+                        <span className="text-xs text-amber-600 font-bold px-1">
+                          {isRtl ? "بلاغ:" : "Report:"} {batch.reportNumber}
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                        batch.status === "CLOSED"
+                          ? "bg-green-100 text-green-700"
+                          : batch.status === "IN_PROGRESS"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {batch.status === "CLOSED" ? (
+                        <><CheckCircle className="h-3.5 w-3.5" /> {isRtl ? "مكتمل" : "Closed"}</>
+                      ) : batch.status === "IN_PROGRESS" ? (
+                        <><Clock className="h-3.5 w-3.5" /> {t("dash_status_in_progress")}</>
+                      ) : (
+                        <><AlertCircle className="h-3.5 w-3.5" /> {t("dash_status_open")}</>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="bg-white border border-gray-100 rounded-lg p-3 mb-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm font-bold text-gray-900">{batch.trader.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {new Date(batch.date).toLocaleDateString(isRtl ? "ar-SA" : "en-US")}
+                      </div>
+                      {batch.representative && (
+                        <div className="flex items-center gap-1">
+                          <User className="h-3.5 w-3.5" />
+                          {batch.representative}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-lg text-sm">
+                      <Package className="h-4 w-4" />
+                      {batch._count.devices} {isRtl ? "أجهزة" : "Devices"}
+                    </div>
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/batches/${batch.id}`}
+                        className="inline-flex items-center justify-center p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                      >
+                        <Eye className="h-5 w-5" />
+                      </Link>
+                      <form
+                        action={async () => {
+                          "use server";
+                          await deleteBatch(batch.id);
+                        }}
+                      >
+                        <button
+                          type="submit"
+                          className="inline-flex items-center justify-center p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

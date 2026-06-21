@@ -481,97 +481,155 @@ export default function ReportsClient({ initialDevices }: ReportsClientProps) {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-right divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-12 text-center">#</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">الاسم والبراند</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">الموديل</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">رقم السيريال (SN)</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">التاجر</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">المندوب</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">تاريخ الاستلام</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">تاريخ التعديل</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">مطابقة الفرز</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">الملحقات</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">القرار النهائي</th>
-                  <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">اسم الفني</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
-                {filteredDevices.map((device, index) => (
-                  <tr key={device.id} className="hover:bg-slate-50/50 transition-colors">
-                    {/* Index */}
-                    <td className="px-4 py-4 text-center font-bold text-gray-400 text-sm">{index + 1}</td>
-
-                    {/* Brand */}
-                    <td className="px-4 py-4 whitespace-nowrap font-bold text-gray-955 text-xs">
-                      {device.brand}
-                    </td>
-
-                    {/* Model */}
-                    <td className="px-4 py-4 whitespace-nowrap font-mono text-xs text-gray-700">
-                      {device.model}
-                    </td>
-
-                    {/* Serial */}
-                    <td className="px-4 py-4 whitespace-nowrap font-mono text-xs font-bold text-indigo-700">
-                      {device.serialNumber}
-                    </td>
-
-                    {/* Trader */}
-                    <td className="px-4 py-4 whitespace-nowrap text-xs font-semibold text-gray-800">
-                      {device.trader?.name || "—"}
-                    </td>
-
-                    {/* Representative */}
-                    <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-600">
-                      {device.batch?.representative || "—"}
-                    </td>
-
-                    {/* Receipt Date */}
-                    <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-600">
-                      {device.batch?.date ? new Date(device.batch.date).toLocaleDateString("ar-SA") : "—"}
-                    </td>
-
-                    {/* Inspection/Last Updated Date */}
-                    <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-600">
-                      {device.updatedAt ? new Date(device.updatedAt).toLocaleDateString("ar-SA") : "—"}
-                    </td>
-
-                    {/* Inspection Result (مطابقة الفرز) */}
-                    <td className="px-4 py-4 whitespace-nowrap text-center text-xs font-bold">
-                      {device.inspectionResult === "MATCH" ? (
-                        <span className="text-green-600">✅ مطابق</span>
-                      ) : device.inspectionResult === "NOT_MATCH" ? (
-                        <span className="text-red-600">❌ غير مطابق</span>
-                      ) : (
-                        <span className="text-gray-400">⏳ قيد الفحص</span>
-                      )}
-                    </td>
-
-                    {/* Accessories */}
-                    <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-600">
-                      {device.accessoriesStatus || "—"}
-                    </td>
-
-                    {/* Decision Badge */}
-                    <td className="px-4 py-4 whitespace-nowrap text-center">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-bold ${DECISION_COLORS[device.decision] || "bg-gray-100 text-gray-700"}`}>
-                        {DECISION_LABELS[device.decision] || device.decision}
-                      </span>
-                    </td>
-
-                    {/* Inspector */}
-                    <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-800 font-bold">
-                      {device.inspectorName || "—"}
-                    </td>
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full text-right divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider w-12 text-center">#</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">الاسم والبراند</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">الموديل</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">رقم السيريال (SN)</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">التاجر</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">المندوب</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">تاريخ الاستلام</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">تاريخ التعديل</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">مطابقة الفرز</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">الملحقات</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">القرار النهائي</th>
+                    <th className="px-4 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">اسم الفني</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {filteredDevices.map((device, index) => (
+                    <tr key={device.id} className="hover:bg-slate-50/50 transition-colors">
+                      {/* Index */}
+                      <td className="px-4 py-4 text-center font-bold text-gray-400 text-sm">{index + 1}</td>
+
+                      {/* Brand */}
+                      <td className="px-4 py-4 whitespace-nowrap font-bold text-gray-955 text-xs">
+                        {device.brand}
+                      </td>
+
+                      {/* Model */}
+                      <td className="px-4 py-4 whitespace-nowrap font-mono text-xs text-gray-700">
+                        {device.model}
+                      </td>
+
+                      {/* Serial */}
+                      <td className="px-4 py-4 whitespace-nowrap font-mono text-xs font-bold text-indigo-700">
+                        {device.serialNumber}
+                      </td>
+
+                      {/* Trader */}
+                      <td className="px-4 py-4 whitespace-nowrap text-xs font-semibold text-gray-800">
+                        {device.trader?.name || "—"}
+                      </td>
+
+                      {/* Representative */}
+                      <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-600">
+                        {device.batch?.representative || "—"}
+                      </td>
+
+                      {/* Receipt Date */}
+                      <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-600">
+                        {device.batch?.date ? new Date(device.batch.date).toLocaleDateString("ar-SA") : "—"}
+                      </td>
+
+                      {/* Inspection/Last Updated Date */}
+                      <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-600">
+                        {device.updatedAt ? new Date(device.updatedAt).toLocaleDateString("ar-SA") : "—"}
+                      </td>
+
+                      {/* Inspection Result (مطابقة الفرز) */}
+                      <td className="px-4 py-4 whitespace-nowrap text-center text-xs font-bold">
+                        {device.inspectionResult === "MATCH" ? (
+                          <span className="text-green-600">✅ مطابق</span>
+                        ) : device.inspectionResult === "NOT_MATCH" ? (
+                          <span className="text-red-600">❌ غير مطابق</span>
+                        ) : (
+                          <span className="text-gray-400">⏳ قيد الفحص</span>
+                        )}
+                      </td>
+
+                      {/* Accessories */}
+                      <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-600">
+                        {device.accessoriesStatus || "—"}
+                      </td>
+
+                      {/* Decision Badge */}
+                      <td className="px-4 py-4 whitespace-nowrap text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[10px] font-bold ${DECISION_COLORS[device.decision] || "bg-gray-100 text-gray-700"}`}>
+                          {DECISION_LABELS[device.decision] || device.decision}
+                        </span>
+                      </td>
+
+                      {/* Inspector */}
+                      <td className="px-4 py-4 whitespace-nowrap text-xs text-gray-800 font-bold">
+                        {device.inspectorName || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {filteredDevices.map((device, index) => (
+                <div key={device.id} className="p-4 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <span className="text-xs font-bold text-gray-400 mb-1 block">#{index + 1}</span>
+                      <h3 className="text-sm font-bold text-gray-900">{device.brand} - {device.model}</h3>
+                      <div className="text-xs font-mono text-indigo-700 font-bold mt-1 bg-indigo-50 inline-block px-2 py-0.5 rounded">
+                        {device.serialNumber}
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full border text-[10px] font-bold ${DECISION_COLORS[device.decision] || "bg-gray-100 text-gray-700"}`}>
+                      {DECISION_LABELS[device.decision] || device.decision}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="bg-gray-50 rounded p-2">
+                      <span className="block text-[10px] text-gray-500 font-bold mb-1">التاجر</span>
+                      <span className="text-xs font-bold text-gray-800">{device.trader?.name || "—"}</span>
+                    </div>
+                    <div className="bg-gray-50 rounded p-2">
+                      <span className="block text-[10px] text-gray-500 font-bold mb-1">المندوب</span>
+                      <span className="text-xs text-gray-700">{device.batch?.representative || "—"}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs border-t border-gray-100 pt-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-gray-500 font-bold">حالة الفرز:</span>
+                      {device.inspectionResult === "MATCH" ? (
+                        <span className="text-green-600 font-bold">✅ مطابق</span>
+                      ) : device.inspectionResult === "NOT_MATCH" ? (
+                        <span className="text-red-600 font-bold">❌ غير مطابق</span>
+                      ) : (
+                        <span className="text-gray-400 font-bold">⏳ قيد الفحص</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1 text-left">
+                      <span className="text-gray-500 font-bold">استلام / تعديل:</span>
+                      <span className="text-gray-600">
+                        {device.batch?.date ? new Date(device.batch.date).toLocaleDateString("ar-SA") : "—"} / {device.updatedAt ? new Date(device.updatedAt).toLocaleDateString("ar-SA") : "—"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {device.inspectorName && (
+                    <div className="mt-2 text-[10px] text-gray-500 font-bold">
+                      الفني: <span className="text-gray-800">{device.inspectorName}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

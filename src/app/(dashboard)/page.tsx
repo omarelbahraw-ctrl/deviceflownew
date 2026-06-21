@@ -105,7 +105,8 @@ export default async function Dashboard() {
               {isRtl ? "عرض الكل ←" : "View All →"}
             </Link>
           </div>
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className={`min-w-full divide-y divide-gray-200 ${isRtl ? "text-right" : "text-left"}`}>
               <thead className="bg-gray-50">
                 <tr>
@@ -145,6 +146,43 @@ export default async function Dashboard() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {recentBatches.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-gray-500">{t("dash_no_batches")}</div>
+            ) : (
+              recentBatches.map((batch) => (
+                <div key={batch.id} className="p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <Link href={`/batches/${batch.id}`} className="text-sm font-bold text-indigo-600 mb-1 inline-block">
+                        #{batch.id.substring(batch.id.length - 6).toUpperCase()}
+                      </Link>
+                      <h3 className="text-sm font-bold text-gray-900">{batch.trader.name}</h3>
+                    </div>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                      batch.status === "CLOSED" ? "bg-green-100 text-green-800" : 
+                      batch.status === "IN_PROGRESS" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
+                    }`}>
+                      {batch.status === "CLOSED" ? t("batch_save_success") : batch.status === "IN_PROGRESS" ? t("dash_status_in_progress") : t("dash_status_open")}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {new Date(batch.date).toLocaleDateString(isRtl ? 'ar-SA' : 'en-US')}
+                    </div>
+                    <div className="flex items-center gap-1 font-bold text-gray-700 bg-gray-100 px-2 py-1 rounded-md">
+                      <Package className="h-3.5 w-3.5" />
+                      {batch._count.devices} {isRtl ? "أجهزة" : "Devices"}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

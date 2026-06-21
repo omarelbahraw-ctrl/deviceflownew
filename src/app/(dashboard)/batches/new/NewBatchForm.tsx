@@ -597,10 +597,10 @@ export default function NewBatchForm({
               {devices.map((device, index) => (
                 <div key={device.id} className="hover:bg-gray-50/50 transition-colors">
                   {/* Main row */}
-                  <div className="px-6 py-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative">
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       {/* Number badge */}
-                      <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0 mt-1 sm:mt-0">
                         {index + 1}
                       </div>
 
@@ -609,12 +609,12 @@ export default function NewBatchForm({
                         <img
                           src={device.imageBase64}
                           alt="صورة الجهاز"
-                          className="h-12 w-12 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                          className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover border border-gray-200 flex-shrink-0 mt-1 sm:mt-0"
                         />
                       )}
 
                       {/* Device info */}
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-gray-900 text-sm">
                             {device.brand} - {device.model}
@@ -644,7 +644,7 @@ export default function NewBatchForm({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 sm:static absolute top-4 left-4 rtl:right-auto rtl:left-4 ltr:right-4 ltr:left-auto">
                       <button
                         type="button"
                         onClick={() =>

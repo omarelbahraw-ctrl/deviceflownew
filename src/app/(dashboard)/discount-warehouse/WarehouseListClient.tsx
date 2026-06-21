@@ -151,7 +151,7 @@ export default function WarehouseListClient({ items }: { items: ItemData[] }) {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:hidden">
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full text-right divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
@@ -234,6 +234,87 @@ export default function WarehouseListClient({ items }: { items: ItemData[] }) {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {filtered.map((item, index) => {
+              const grade = GRADE_STYLES[item.category] || GRADE_STYLES.C;
+              return (
+                <div key={item.id} className={`p-4 hover:bg-slate-50/50 transition-colors ${!item.readyForSale ? "opacity-60" : ""}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-gray-400 mb-1">#{index + 1}</span>
+                      <h3 className="text-sm font-bold text-gray-900">{item.brand} {item.model}</h3>
+                      <span className="text-xs font-mono text-indigo-700 font-bold bg-indigo-50 inline-block px-2 py-0.5 rounded mt-1 w-max">
+                        {item.serialNumber}
+                      </span>
+                    </div>
+                    <span className={`inline-flex items-center justify-center h-8 w-8 rounded-full ${grade.bg} ${grade.text} font-bold text-sm border ${grade.border}`}>
+                      {item.category}
+                    </span>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-3 my-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-gray-500 font-bold">الحالة الفنية:</span>
+                      <span className="text-xs font-bold">
+                        {item.workingStatus === "WORKING" ? (
+                          <span className="text-green-600">✅ يعمل بالكامل</span>
+                        ) : item.workingStatus === "MINOR_ISSUE" ? (
+                          <span className="text-amber-600">⚠️ عيب بسيط</span>
+                        ) : (
+                          <span className="text-red-600">🔧 يحتاج إصلاح</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      <span className="font-bold text-gray-500">التشخيص:</span> {item.previousIssue || "لا يوجد عيب مسجل"}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] text-gray-500 font-bold">السعر المخفض</span>
+                      <span className="font-bold text-green-600 text-sm">
+                        {item.priceAfter ? `${item.priceAfter.toLocaleString()} ر.س` : "غير محدد"}
+                      </span>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleToggleSold(item.id, item.readyForSale)}
+                      className={`text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors ${
+                        item.readyForSale
+                          ? "bg-green-50 text-green-700 border border-green-200"
+                          : "bg-gray-150 text-gray-500 border border-gray-200"
+                      }`}
+                    >
+                      {item.readyForSale ? (
+                        <><CheckCircle className="h-4 w-4" /> متاح</>
+                      ) : (
+                        <><XCircle className="h-4 w-4" /> تم البيع</>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-100">
+                    <Link
+                      href={`/discount-warehouse/${item.id}`}
+                      className="flex-1 justify-center px-3 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors inline-flex items-center gap-1"
+                    >
+                      <Eye className="h-4 w-4" /> التفاصيل كاملة
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                      title="حذف الجهاز"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
