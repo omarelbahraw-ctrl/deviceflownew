@@ -28,6 +28,15 @@ export function proxy(request: NextRequest) {
     }
   }
 
+  // Role-based restrictions for TECHNICIAN
+  if (role === 'TECHNICIAN') {
+    const adminPaths = ["/settings", "/users", "/reports"];
+    const isTryingToAccessAdminRoute = adminPaths.some(p => pathname === p || pathname.startsWith(p + "/"));
+    if (isTryingToAccessAdminRoute) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
   // Redirect authenticated users away from login
   if (sessionRaw && pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/', request.url));
