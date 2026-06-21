@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import DeviceDecisionSelector from "./DeviceDecisionSelector";
 import BatchActionsClient from "./BatchActionsClient";
+import MediaGalleryClient from "./MediaGalleryClient";
 
 export default async function BatchDetailsPage({
   params,
@@ -239,23 +240,11 @@ export default async function BatchDetailsPage({
                   </div>
 
                   {/* Device Media */}
-                  {device.mediaUrls && device.mediaUrls.length > 0 && (
-                    <div className="flex gap-2 flex-wrap">
-                      {device.mediaUrls.map((url: string, imgIdx: number) => (
-                        url.match(/\.(mp4|webm|mov|x-m4v)$/i) ? (
-                          <video key={imgIdx} src={url} controls className="h-24 w-24 rounded-xl object-cover border-2 border-gray-200 flex-shrink-0" />
-                        ) : (
-                          <a key={imgIdx} href={url} target="_blank" rel="noreferrer">
-                            <img
-                              src={url}
-                              alt={`صورة ${device.brand} ${device.model}`}
-                              className="h-24 w-24 rounded-xl object-cover border-2 border-gray-200 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
-                            />
-                          </a>
-                        )
-                      ))}
-                    </div>
-                  )}
+                  <MediaGalleryClient 
+                    mediaUrls={device.mediaUrls} 
+                    brand={device.brand} 
+                    model={device.model} 
+                  />
 
                   {/* Device Details */}
                   <div className="flex-1 min-w-0">

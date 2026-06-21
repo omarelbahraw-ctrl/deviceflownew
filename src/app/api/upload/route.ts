@@ -12,11 +12,6 @@ export async function POST(request: Request): Promise<NextResponse> {
         // Here we could check user session for authentication
         // We will allow uploads for now assuming they are logged in
         return {
-          allowedContentTypes: [
-            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 
-            'image/heic', 'image/heif', 
-            'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v'
-          ],
           maximumSizeInBytes: 50 * 1024 * 1024, // 50MB limit
           tokenPayload: JSON.stringify({
             // optional metadata

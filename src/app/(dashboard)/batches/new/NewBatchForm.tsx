@@ -51,6 +51,7 @@ export default function NewBatchForm({
   const [error, setError] = useState("");
   const [devices, setDevices] = useState<DeviceEntry[]>([]);
   const [expandedDevice, setExpandedDevice] = useState<string | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   // Barcode scanner state
   const [isScannerOpen, setIsScannerOpen] = useState(false); // Used as loading state now
@@ -565,13 +566,13 @@ export default function NewBatchForm({
                             <span className="text-[10px] text-gray-500 font-bold">Video</span>
                           </div>
                         ) : (
-                          <a href={url} target="_blank" rel="noreferrer">
+                          <div onClick={() => setFullscreenImage(url)}>
                             <img
                               src={url}
                               alt={`Media ${idx}`}
                               className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80"
                             />
-                          </a>
+                          </div>
                         )}
                         <button
                           type="button"
@@ -670,13 +671,13 @@ export default function NewBatchForm({
                             <video src={device.mediaUrls[0]} controls className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover" />
                           </div>
                         ) : (
-                          <a href={device.mediaUrls[0]} target="_blank" rel="noreferrer">
+                          <div onClick={() => setFullscreenImage(device.mediaUrls![0])}>
                             <img
-                              src={device.mediaUrls[0]}
+                              src={device.mediaUrls![0]}
                               alt="معاينة"
                               className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
                             />
-                          </a>
+                          </div>
                         )
                       )}
 
@@ -771,7 +772,12 @@ export default function NewBatchForm({
                                 {url.match(/\.(mp4|webm|mov|quicktime)$/i) || url.includes('video') ? (
                                   <video src={url} controls className="max-h-48 rounded-lg object-cover border border-gray-200 max-w-xs" />
                                 ) : (
-                                  <img src={url} alt={`Media ${i}`} className="max-h-48 rounded-lg object-cover border border-gray-200" />
+                                  <img 
+                                    src={url} 
+                                    alt={`Media ${i}`} 
+                                    className="max-h-48 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80"
+                                    onClick={() => setFullscreenImage(url)}
+                                  />
                                 )}
                               </div>
                             ))}
@@ -869,6 +875,29 @@ export default function NewBatchForm({
             <p className="text-gray-500 text-sm">
               {isRtl ? "لحظات وبيتم قراءة الرقم من الصورة" : "Extracting number from image"}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Image Modal */}
+      {fullscreenImage && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setFullscreenImage(null)}
+        >
+          <div className="relative max-w-4xl w-full h-full flex flex-col items-center justify-center">
+            <button 
+              onClick={() => setFullscreenImage(null)}
+              className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2 transition-colors z-10"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <img 
+              src={fullscreenImage} 
+              alt="Fullscreen preview" 
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
       )}
